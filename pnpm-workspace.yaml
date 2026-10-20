@@ -1,0 +1,7 @@
+packages:
+  - .
+storeDir: .pnpm-store
+nodeLinker: hoisted
+allowBuilds:
+  esbuild: true
+  '@tailwindcss/oxide': true

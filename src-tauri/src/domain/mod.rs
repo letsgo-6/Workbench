@@ -1,0 +1,16 @@
+pub mod ai;
+pub mod backup;
+pub mod calendar;
+pub mod common;
+pub mod dashboard;
+pub mod data;
+pub mod history;
+pub mod idea;
+pub mod prompt;
+pub mod provider;
+pub mod settings;
+pub mod skill;
+pub mod skill_parse;
+pub mod skill_transfer;
+pub mod tip;
+pub mod todo;

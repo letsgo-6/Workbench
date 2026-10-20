@@ -1,0 +1,23 @@
+node_modules/
+.pnpm-store/
+.toolchain/
+dist/
+src-tauri/target/
+src-tauri/gen/
+*.log
+!docs/*-output.log
+.impeccable/cache/
+coverage/
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# Generated local evidence and design-tool cache
+docs/*-output.log
+docs/evidence/*
+!docs/evidence/.gitkeep
+.impeccable/

@@ -1,0 +1,197 @@
+.detail-extra {
+  margin-block: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.detail-extra h3 {
+  margin-bottom: 12px;
+}
+.detail-extra ul,
+.skill-import-preview,
+.backup-list {
+  list-style: none;
+  padding: 0;
+}
+.subtask-row,
+.inline-form,
+.backup-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.subtask-row {
+  margin-block: 8px;
+}
+.subtask-row input[type='checkbox'] {
+  flex: 0 0 auto;
+}
+.inline-form input {
+  min-width: 0;
+}
+.inline-form button {
+  flex-shrink: 0;
+}
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 20px;
+}
+.wide-dialog {
+  width: min(90vw, 64rem);
+  max-width: min(90vw, 64rem);
+  max-height: 88vh;
+  overflow: auto;
+}
+.list-tools {
+  padding: 0 22px 16px;
+}
+.idea-calendar {
+  padding: 0 22px 16px;
+  flex-shrink: 0;
+}
+.idea-calendar summary {
+  cursor: pointer;
+  color: var(--primary);
+  padding-block: 8px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  margin-block: 10px;
+}
+.calendar-grid button {
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.calendar-grid button:hover {
+  background: var(--accent);
+}
+.calendar-grid button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.calendar-grid small {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.skill-import-preview {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.skill-import-preview li {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.skill-import-preview label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.skill-import-preview label span {
+  color: var(--muted-foreground);
+}
+.skill-import-preview p {
+  margin-block: 6px;
+}
+.conversation-history {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.conversation-history > label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.conversation-history select {
+  width: 100%;
+  margin-block: 5px;
+}
+.conversation-history .inline-form {
+  flex-wrap: wrap;
+}
+.conversation-history .inline-form input {
+  flex: 1;
+}
+.reference-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.reference-chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  background: var(--accent);
+  border-radius: 6px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.reference-chips button {
+  padding: 3px;
+}
+.reference-chips svg {
+  width: 13px;
+  height: 13px;
+}
+.reference-picker {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+.reference-picker button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.reference-picker button:hover {
+  background: var(--accent);
+}
+.reference-picker p {
+  padding: 8px;
+}
+.table-scroll {
+  overflow-x: auto;
+  margin-block: 12px;
+}
+.breakdown-preview table {
+  min-width: 560px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.breakdown-preview td,
+.breakdown-preview th {
+  padding: 5px;
+  text-align: left;
+}
+.breakdown-preview td:first-child {
+  min-width: 150px;
+}
+.breakdown-preview input[type='date'] {
+  min-width: 135px;
+}
+.backup-list li {
+  padding-block: 10px;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.daily-summary {
+  margin-block: 14px;
+}
+.search-syntax {
+  font-size: 12px;
+  padding: 8px 16px;
+}
+.cm-content,
+.markdown {
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,39 @@
+[
+  { "body": "", "variables": [], "values": {}, "result": "" },
+  {
+    "body": "你好 {{ topic }} / {{topic}}",
+    "variables": ["topic"],
+    "values": { "topic": "世界" },
+    "result": "你好 世界 / 世界"
+  },
+  {
+    "body": "{{主题}}{{对象}}",
+    "variables": ["主题", "对象"],
+    "values": { "主题": "统计" },
+    "result": "统计{{对象}}"
+  },
+  {
+    "body": "{{unfinished",
+    "variables": [],
+    "values": {},
+    "result": "{{unfinished"
+  },
+  {
+    "body": "{{first}}\n{{second}}",
+    "variables": ["first", "second"],
+    "values": { "first": "A", "second": "B" },
+    "result": "A\nB"
+  },
+  {
+    "body": "{{a\nb}} {{ }} {{x}}",
+    "variables": ["x"],
+    "values": { "x": "" },
+    "result": "{{a\nb}} {{ }} {{x}}"
+  },
+  {
+    "body": "{{x}}{{x}}{{y}}",
+    "variables": ["x", "y"],
+    "values": { "x": "$&", "y": "ok" },
+    "result": "$&$&ok"
+  }
+]

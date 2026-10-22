@@ -1,7 +1,8 @@
 pub mod common;
 pub mod conversations;
-pub mod dashboard;
+pub mod home;
 pub mod ideas;
+pub mod materials;
 pub mod prompts;
 pub mod providers;
 pub mod search;

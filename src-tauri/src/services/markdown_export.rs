@@ -51,6 +51,13 @@ fn meta(tags: &[Tag], created: i64, updated: i64) -> serde_json::Value {
 }
 /// Export live content into a portable Markdown tree without overwriting existing files.
 pub fn export(conn: &Connection, dir: &Path) -> AppResult<u32> {
+    export_inner(conn, dir, None)
+}
+/// Export materials with their original local media.
+pub fn export_with_assets(conn: &Connection, dir: &Path, assets: &Path) -> AppResult<u32> {
+    export_inner(conn, dir, Some(assets))
+}
+fn export_inner(conn: &Connection, dir: &Path, assets: Option<&Path>) -> AppResult<u32> {
     let mut count = 0;
     let mut days: BTreeMap<String, Vec<crate::domain::idea::Idea>> = BTreeMap::new();
     let mut todos = vec![];
@@ -69,6 +76,9 @@ pub fn export(conn: &Connection, dir: &Path) -> AppResult<u32> {
             .collect::<Result<Vec<_>, _>>()?;
         for id in ids {
             match kind {
+                EntityType::Material => {
+                    count += export_material(conn, &id, dir, assets)?;
+                }
                 EntityType::Idea => {
                     let i = repo::ideas::get(conn, &id)?;
                     days.entry(i.date.clone()).or_default().push(i);
@@ -187,4 +197,99 @@ pub fn export(conn: &Connection, dir: &Path) -> AppResult<u32> {
         ),
     )?;
     Ok(count + 1)
+}
+
+fn export_material(
+    conn: &Connection,
+    id: &str,
+    dir: &Path,
+    assets: Option<&Path>,
+) -> AppResult<u32> {
+    let item = repo::materials::get(conn, id)?;
+    let base = dir.join("作品素材库").join(if item.kind == "work" {
+        "作品"
+    } else {
+        "UI组件"
+    });
+    std::fs::create_dir_all(&base)?;
+    let stem = super::export::filename(&item.title);
+    let folder = (1..10000)
+        .find_map(|n| {
+            let path = base.join(if n == 1 {
+                stem.clone()
+            } else {
+                format!("{stem}-{n}")
+            });
+            match std::fs::create_dir(&path) {
+                Ok(()) => Some(Ok(path)),
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => None,
+                Err(e) => Some(Err(AppError::from(e))),
+            }
+        })
+        .ok_or_else(|| AppError::Invalid("Too many duplicate folders".into()))??;
+    let mut body = item.note_md.clone();
+    if let Some(root) = assets {
+        for asset in &item.assets {
+            let source = super::assets::owned_path(root, &asset.path)?;
+            if !source.is_file() {
+                continue;
+            }
+            let name = super::export::filename(&asset.original_name);
+            let original = Path::new(&name);
+            let stem = original
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("material");
+            let ext = original
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("bin");
+            let target = (1..10000)
+                .map(|n| {
+                    folder.join(if n == 1 {
+                        name.clone()
+                    } else {
+                        format!("{stem}-{n}.{ext}")
+                    })
+                })
+                .find(|p| !p.exists())
+                .ok_or_else(|| AppError::Invalid("Too many duplicate files".into()))?;
+            let mut output = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&target)?;
+            std::io::copy(&mut std::fs::File::open(source)?, &mut output)?;
+            let name = target
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .replace(' ', "%20")
+                .replace('(', "%28")
+                .replace(')', "%29");
+            body.push_str(&format!(
+                "\n\n{}[{}](<./{}>)",
+                if asset.media_kind == "video" { "" } else { "!" },
+                asset.original_name.replace(['[', ']'], ""),
+                name
+            ));
+        }
+    }
+    let mut metadata = meta(&item.tags, item.created_at, item.updated_at);
+    metadata["url"] = serde_json::to_value(&item.url)?;
+    write(
+        &folder,
+        if item.kind == "work" {
+            "index"
+        } else {
+            "README"
+        },
+        &body,
+        metadata.clone(),
+    )?;
+    if item.kind == "component" {
+        write(&folder, "prompt", &item.prompt, metadata)?;
+        Ok(2)
+    } else {
+        Ok(1)
+    }
 }

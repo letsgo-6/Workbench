@@ -1,6 +1,8 @@
 use super::common::{Origin, Tag};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+/// Canonical built-in Agent tools, mirrored by src/lib/tools.ts.
+pub const PRESET_TOOLS: [&str; 4] = ["Claude Code", "Cursor", "ChatGPT", "Codex"];
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

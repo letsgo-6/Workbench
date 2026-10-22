@@ -51,6 +51,9 @@ pub enum AiStreamEvent {
     Delta {
         text: String,
     },
+    Reasoning {
+        text: String,
+    },
     Done {
         finish_reason: Option<String>,
     },

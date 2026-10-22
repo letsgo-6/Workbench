@@ -1,0 +1,15 @@
+{
+  "version": "0.5.0",
+  "sourceCommit": "3c4205cc1b4588b0f045ffaf514daffcfa08d904",
+  "scope": "Actual release WebView2 screenshots with a test-owned demonstration database; no personal content or real model calls",
+  "demo": true,
+  "viewport": {
+    "width": 1320,
+    "height": 844,
+    "deviceScaleFactor": 1.25
+  },
+  "files": {
+    "home.png": "d5aafe53b7428ca01d6091cbb3c2b3c9c261b88b26fb7a89292da1a58760a60d",
+    "home-targets.png": "467890c147bb50c7be675a3aa71639dc7f2c0909a62fe1b53768a9f0b9fdf8cf"
+  }
+}

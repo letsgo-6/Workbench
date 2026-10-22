@@ -11,6 +11,12 @@ pub fn get_all(conn: &Connection) -> AppResult<Settings> {
             .optional()?)
     };
     let mut result = Settings::default();
+    if let Some(s) = read("home.intro")? {
+        result.home_intro = serde_json::from_str(&s)?;
+    }
+    if let Some(s) = read("appearance.motion")? {
+        result.appearance_motion = serde_json::from_str(&s)?;
+    }
     if let Some(s) = read("appearance.theme")? {
         result.appearance_theme = serde_json::from_str(&s)?;
     }
@@ -48,18 +54,35 @@ pub fn get_all(conn: &Connection) -> AppResult<Settings> {
     if let Some(s) = read("todo.remindersEnabled")? {
         result.todo_reminders_enabled = serde_json::from_str(&s)?;
     }
+    if let Some(s) = read("capture.defaultTarget")? {
+        result.capture_default_target = serde_json::from_str(&s)?;
+    }
+    if let Some(s) = read("capture.autoSave")? {
+        result.capture_auto_save = serde_json::from_str(&s)?;
+    }
     Ok(result)
 }
 /// Reject unknown keys and values before persisting.
 pub fn set(tx: &Transaction<'_>, key: &str, value: &serde_json::Value) -> AppResult<Settings> {
     let valid = match key {
+        "home.intro" => value
+            .as_str()
+            .is_some_and(|s| ["daily", "always", "never"].contains(&s)),
+        "appearance.motion" => value
+            .as_str()
+            .is_some_and(|s| ["system", "full", "lite", "off"].contains(&s)),
         "appearance.theme" => value
             .as_str()
             .is_some_and(|s| ["light", "dark", "system"].contains(&s)),
         "tips.customTools" => value.as_array().is_some_and(|a| {
             a.len() <= 100 && a.iter().all(|v| v.as_str().is_some_and(|s| s.len() <= 200))
         }),
-        "general.closeToTray" => value.is_boolean(),
+        "general.closeToTray" | "capture.autoSave" => value.is_boolean(),
+        "capture.defaultTarget" => value.as_str().is_some_and(|s| {
+            crate::domain::common::EntityType::ALL
+                .into_iter()
+                .any(|kind| kind.table() == s)
+        }),
         "shortcut.quickCapture" => value
             .as_str()
             .is_some_and(|s| !s.is_empty() && s.len() <= 100),

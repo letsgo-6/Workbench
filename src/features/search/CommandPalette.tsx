@@ -16,6 +16,7 @@ import { emptyDraft, toInput } from '../content/draft';
 import { flushAll } from '@/hooks/useAutosave';
 import { highlight } from '@/lib/highlight';
 import { t } from '@/i18n';
+import { requestAction } from '../ai/store';
 import { reportError } from '@/app/providers';
 function Highlight({ text, q }: { text: string; q: string }) {
   return (
@@ -113,6 +114,11 @@ export function CommandPalette() {
               </>
             ) : (
               <Command.Group heading={t('search.commands')}>
+                <Command.Item
+                  onSelect={() => run(() => requestAction('daily_summary', []))}
+                >
+                  {t('v02.summary')}
+                </Command.Item>
                 {kinds.map((kind) => (
                   <Command.Item
                     key={kind}

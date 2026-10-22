@@ -27,6 +27,9 @@ export function TemplateSettings() {
           <article className="template-row" key={p.id}>
             <div>
               <strong>{p.title}</strong>
+              {p.hasNewDefault && (
+                <span className="warning-text">{t('material.newDefault')}</span>
+              )}
               <p className="muted">{p.body.slice(0, 100)}</p>
             </div>
             <Link to={`/prompts/${p.id}`}>{t('desktop.editTemplate')}</Link>

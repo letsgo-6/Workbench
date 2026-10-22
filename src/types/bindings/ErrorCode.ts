@@ -3,4 +3,4 @@
 /**
  * Stable frontend error codes; diagnostic details never contain request bodies.
  */
-export type ErrorCode = "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "DB" | "IO" | "INTERNAL" | "NETWORK" | "TIMEOUT" | "IMPORT_INVALID" | "SECRET_STORE" | "SHORTCUT_CONFLICT" | "SHORTCUT_INVALID" | "AI_NO_PROVIDER" | "AI_NO_KEY" | "AI_AUTH" | "AI_ENDPOINT" | "AI_RATE_LIMIT" | "AI_PROVIDER" | "AI_BAD_RESPONSE";
+export type ErrorCode = "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "DB" | "IO" | "INTERNAL" | "NETWORK" | "TIMEOUT" | "IMPORT_INVALID" | "SECRET_STORE" | "SHORTCUT_CONFLICT" | "SHORTCUT_INVALID" | "AI_NO_PROVIDER" | "AI_NO_KEY" | "AI_AUTH" | "AI_ENDPOINT" | "AI_RATE_LIMIT" | "AI_PROVIDER" | "AI_BAD_RESPONSE" | "CANCELLED";

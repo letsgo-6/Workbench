@@ -1,6 +1,6 @@
 pub mod app;
-pub mod dashboard;
 pub mod data;
+pub mod home;
 pub mod ideas;
 pub mod prompts;
 pub mod search;
@@ -123,6 +123,8 @@ pub fn prepare_prompt(_input: &mut PromptInput) -> AppResult<()> {
 }
 pub mod ai;
 pub mod backups;
+pub mod capture;
 pub mod desktop;
 pub mod history;
+pub mod materials;
 pub mod providers;

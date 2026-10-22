@@ -6,7 +6,7 @@ use crate::{
     state::AppState,
 };
 use tauri::ipc::Channel;
-fn credentials(
+pub(crate) fn credentials(
     state: &AppState,
     id: Option<&str>,
 ) -> AppResult<(crate::domain::provider::ProviderView, String)> {
@@ -18,7 +18,7 @@ fn credentials(
         .ok_or_else(|| AppError::coded(ErrorCode::AiNoKey, "Missing API credential"))?;
     Ok((p, key))
 }
-fn validate(id: &str) -> AppResult<()> {
+pub(crate) fn validate(id: &str) -> AppResult<()> {
     if uuid::Uuid::parse_str(id).is_err() {
         return Err(AppError::Invalid("Invalid request identifier".into()));
     }

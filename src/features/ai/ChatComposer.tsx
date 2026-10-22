@@ -7,7 +7,14 @@ import { t } from '@/i18n';
 import { useAiStore, sendChat } from './store';
 import type { SearchHit } from '@/types/bindings/SearchHit';
 export function ChatComposer() {
-  const [question, setQuestion] = useState('');
+  const question = useAiStore((s) => s.composerText);
+  const setQuestion = (value: string | ((previous: string) => string)) =>
+    useAiStore.getState().patch({
+      composerText:
+        typeof value === 'function'
+          ? value(useAiStore.getState().composerText)
+          : value,
+    });
   const [refs, setRefs] = useState<SearchHit[]>([]);
   const [query, setQuery] = useState('');
   const busy = useAiStore((s) => s.status === 'streaming');
@@ -88,7 +95,10 @@ export function ChatComposer() {
                   setQuestion((v) => v.replace(/@[^\s@]*$/, ''));
                 }}
               >
-                {t(`nav.${r.entityType}`)} · {r.title}
+                {r.entityType === 'idea'
+                  ? t('capture.idea')
+                  : t(`nav.${r.entityType}`)}{' '}
+                · {r.title}
               </button>
             ))
           )}

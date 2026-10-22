@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { materialsApi } from '@/lib/api/materials';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,29 +12,69 @@ import { useAction } from '../content/hooks';
 import { t } from '@/i18n';
 import { toast } from 'sonner';
 export function DataSettings() {
+  const [format, setFormat] = useState<'full' | 'json'>('full');
+  const usage = useQuery({
+    queryKey: ['material', 'usage'],
+    queryFn: materialsApi.usage,
+  });
   const [path, setPath] = useState<string | null>(null);
   const [mode, setMode] = useState<'merge' | 'overwrite'>('merge');
   const [phrase, setPhrase] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [directory, setDirectory] = useState<string | null>(null);
   const action = useAction((fn: () => Promise<unknown>) => fn());
-  const filter = [{ name: t('data.file'), extensions: ['json'] }];
+  const filter = [
+    { name: t('material.backupFilter'), extensions: ['json', 'wbbackup'] },
+  ];
   return (
     <section>
       <h2>{t('data.title')}</h2>
       <p className="muted">{t('data.mergeHint')}</p>
+      <label className="material-field">
+        <span>{t('material.backupFormat')}</span>
+        <select
+          value={format}
+          onChange={(e) =>
+            setFormat(e.target.value === 'json' ? 'json' : 'full')
+          }
+        >
+          <option value="full">{t('material.fullBackup')}</option>
+          <option value="json">{t('material.jsonBackup')}</option>
+        </select>
+      </label>
+      {format === 'json' && (
+        <p className="warning-text">{t('material.jsonWarning')}</p>
+      )}
+      {usage.data && (
+        <p className="muted">
+          {t('material.storage', {
+            count: usage.data.fileCount,
+            size: `${(usage.data.totalBytes / 1048576).toFixed(1)} MiB`,
+            purged: `${(usage.data.purgedBytes / 1048576).toFixed(1)} MiB`,
+          })}
+        </p>
+      )}
       <div className="toolbar-actions">
         <Button
           variant="outline"
           onClick={() =>
             action.mutate(async () => {
               const path = await save({
-                defaultPath: 'workbench-backup.json',
-                filters: filter,
+                defaultPath:
+                  format === 'full'
+                    ? 'workbench-backup.wbbackup'
+                    : 'workbench-backup.json',
+                filters: [
+                  {
+                    name: t('material.backupFilter'),
+                    extensions: [format === 'full' ? 'wbbackup' : 'json'],
+                  },
+                ],
               });
               if (path) {
                 await flushAll();
-                await dataApi.export(path);
+                if (format === 'full') await dataApi.exportBackup(path);
+                else await dataApi.export(path);
                 toast.success(t('data.exported'));
               }
             })

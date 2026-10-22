@@ -21,6 +21,9 @@ export interface Draft {
   category: string;
   model: string;
   systemPrompt: string;
+  materialKind: string;
+  materialPrompt: string;
+  coverAssetId: string | null;
 }
 export function emptyDraft(kind: EntityType): Draft {
   return {
@@ -42,6 +45,9 @@ export function emptyDraft(kind: EntityType): Draft {
     category: '',
     model: '',
     systemPrompt: '',
+    materialKind: 'work',
+    materialPrompt: '',
+    coverAssetId: null,
   };
 }
 export function fromEntry(item: Entry, kind: EntityType): Draft {
@@ -78,10 +84,23 @@ export function fromEntry(item: Entry, kind: EntityType): Draft {
     category: 'category' in item ? item.category : '',
     model: 'targetModel' in item ? (item.targetModel ?? '') : '',
     systemPrompt: 'systemPrompt' in item ? (item.systemPrompt ?? '') : '',
+    materialKind: 'assets' in item ? item.kind : 'work',
+    materialPrompt: 'assets' in item ? item.prompt : '',
+    coverAssetId: 'coverAssetId' in item ? item.coverAssetId : null,
   };
 }
 export function toInput(kind: EntityType, d: Draft): EntryInput {
   switch (kind) {
+    case 'material':
+      return {
+        kind: d.materialKind,
+        title: d.title,
+        url: d.url || null,
+        noteMd: d.body,
+        prompt: d.materialPrompt,
+        coverAssetId: d.coverAssetId,
+        tags: d.tags,
+      };
     case 'idea':
       return { contentMd: d.body, date: d.date, tags: d.tags };
     case 'todo':

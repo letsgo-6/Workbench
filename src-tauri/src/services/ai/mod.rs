@@ -20,6 +20,10 @@ pub struct AiService {
     requests: Mutex<HashMap<String, CancellationToken>>,
     pub idle_timeout: Duration,
 }
+struct StreamSink<F> {
+    emit: F,
+    with_reasoning: bool,
+}
 impl AiService {
     /// Configure the transport from the user's proxy setting.
     pub fn new(proxy: &NetworkProxy) -> AppResult<Self> {
@@ -55,6 +59,52 @@ impl AiService {
         truncated: bool,
         emit: impl Fn(AiStreamEvent) -> bool,
     ) -> AppResult<()> {
+        self.run_with(
+            id,
+            provider,
+            key,
+            messages,
+            truncated,
+            StreamSink {
+                emit,
+                with_reasoning: false,
+            },
+        )
+        .await
+    }
+    /// Opt-in reasoning stays on the request's sink; ordinary actions keep dropping it.
+    pub async fn run_with_reasoning(
+        &self,
+        id: &str,
+        provider: ProviderView,
+        key: String,
+        messages: Vec<ChatMessage>,
+        truncated: bool,
+        emit: impl Fn(AiStreamEvent) -> bool,
+    ) -> AppResult<()> {
+        self.run_with(
+            id,
+            provider,
+            key,
+            messages,
+            truncated,
+            StreamSink {
+                emit,
+                with_reasoning: true,
+            },
+        )
+        .await
+    }
+    async fn run_with(
+        &self,
+        id: &str,
+        provider: ProviderView,
+        key: String,
+        messages: Vec<ChatMessage>,
+        truncated: bool,
+        sink: StreamSink<impl Fn(AiStreamEvent) -> bool>,
+    ) -> AppResult<()> {
+        let emit = &sink.emit;
         let token = CancellationToken::new();
         {
             let mut requests = self.requests.lock();
@@ -69,7 +119,7 @@ impl AiService {
             model: provider.model.replace(&key, "[REDACTED]"),
             truncated,
         });
-        let work = self.stream(&provider, &key, &messages, &emit);
+        let work = self.stream(&provider, &key, &messages, emit, sink.with_reasoning);
         let outcome = tokio::select! {biased;_=token.cancelled()=>None,result=work=>Some(result)};
         self.requests.lock().remove(id);
         match outcome {
@@ -94,6 +144,7 @@ impl AiService {
         key: &str,
         messages: &[ChatMessage],
         emit: &impl Fn(AiStreamEvent) -> bool,
+        with_reasoning: bool,
     ) -> AppResult<Option<String>> {
         let client = self.client();
         let first_deadline = tokio::time::Instant::now() + self.idle_timeout;
@@ -104,9 +155,14 @@ impl AiService {
         .await
         .map_err(|_| AppError::coded(ErrorCode::Timeout, "AI first response timed out"))??;
         let mut stream = response.bytes_stream();
-        let mut decoder = sse::Decoder::default();
+        let mut decoder = if with_reasoning {
+            sse::Decoder::with_reasoning()
+        } else {
+            sse::Decoder::default()
+        };
         let mut reason = None;
         let mut redactor = Redactor::new(key);
+        let mut reasoning_redactor = Redactor::new(key);
         let mut size = 0;
         let mut first = true;
         loop {
@@ -126,24 +182,38 @@ impl AiService {
                 None => vec![],
             };
             for chunk in decoder.push(&bytes, eof)? {
+                if let sse::Chunk::Text(text) | sse::Chunk::Reasoning(text) = &chunk {
+                    size += text.len();
+                    if size > 1_000_000 {
+                        return Err(AppError::coded(
+                            ErrorCode::AiBadResponse,
+                            "AI output exceeds limit",
+                        ));
+                    }
+                }
                 match chunk {
                     sse::Chunk::Text(text) => {
-                        size += text.len();
-                        if size > 1_000_000 {
-                            return Err(AppError::coded(
-                                ErrorCode::AiBadResponse,
-                                "AI output exceeds limit",
-                            ));
-                        }
                         let text = redactor.push(&text, false);
                         if !text.is_empty() && !emit(AiStreamEvent::Delta { text }) {
                             return Err(AppError::coded(ErrorCode::Internal, "AI receiver closed"));
                         }
                     }
-                    sse::Chunk::Finish(r) => reason = r,
+                    sse::Chunk::Reasoning(text) => {
+                        let text = reasoning_redactor.push(&text, false);
+                        if !text.is_empty() && !emit(AiStreamEvent::Reasoning { text }) {
+                            return Err(AppError::coded(ErrorCode::Internal, "AI receiver closed"));
+                        }
+                    }
+                    sse::Chunk::Finish(r) => reason = r.map(|r| r.replace(key, "[REDACTED]")),
                 }
             }
             if decoder.done || eof {
+                if with_reasoning {
+                    let text = reasoning_redactor.push("", true);
+                    if !text.is_empty() {
+                        emit(AiStreamEvent::Reasoning { text });
+                    }
+                }
                 let text = redactor.push("", true);
                 if !text.is_empty() {
                     emit(AiStreamEvent::Delta { text });

@@ -15,9 +15,26 @@ coverage/
 *.db-wal
 *.db-shm
 backups/
+# User-provided Steam Workshop media, packaged locally; not part of the MIT source.
+public/scene-media/*.mp4
+public/scene-media/*.jpg
+.impeccable/review/
 
-# Generated local evidence and design-tool cache
+# Keep private development evidence and reference media out of the public tree.
 docs/*-output.log
 docs/evidence/*
 !docs/evidence/.gitkeep
 .impeccable/
+*.wbbackup
+*.sqlite
+*.sqlite3
+*.key
+*.pem
+*.pfx
+bootstrap.json
+credentials.json
+docs/design-refs/*
+!docs/design-refs/neuron/
+!docs/design-refs/neural-dashboard-UI-ANALYSIS.md
+docs/design-refs/neuron/*
+!docs/design-refs/neuron/ANALYSIS.md

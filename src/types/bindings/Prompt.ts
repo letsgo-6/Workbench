@@ -2,4 +2,4 @@
 import type { EntityRef } from "./EntityRef";
 import type { Tag } from "./Tag";
 
-export type Prompt = { id: string, title: string, body: string, systemPrompt: string | null, category: string, targetModel: string | null, variables: Array<string>, useCount: number, isSystemTemplate: boolean, templateKey: string | null, isStarred: boolean, origin: EntityRef | null, createdAt: number, updatedAt: number, deletedAt: number | null, tags: Array<Tag>, };
+export type Prompt = { id: string, title: string, body: string, systemPrompt: string | null, category: string, targetModel: string | null, variables: Array<string>, useCount: number, isSystemTemplate: boolean, templateKey: string | null, hasNewDefault?: boolean, isStarred: boolean, origin: EntityRef | null, createdAt: number, updatedAt: number, deletedAt: number | null, tags: Array<Tag>, };

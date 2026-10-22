@@ -11,6 +11,7 @@ pub enum EntityType {
     Tip,
     Skill,
     Prompt,
+    Material,
 }
 impl EntityType {
     /// SQLite table name for this domain.
@@ -21,10 +22,18 @@ impl EntityType {
             Self::Tip => "tip",
             Self::Skill => "skill",
             Self::Prompt => "prompt",
+            Self::Material => "material",
         }
     }
     /// All searchable content domains.
-    pub const ALL: [Self; 5] = [Self::Idea, Self::Todo, Self::Tip, Self::Skill, Self::Prompt];
+    pub const ALL: [Self; 6] = [
+        Self::Idea,
+        Self::Todo,
+        Self::Tip,
+        Self::Skill,
+        Self::Prompt,
+        Self::Material,
+    ];
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -66,6 +75,7 @@ pub struct ListQuery {
     pub tool: Option<String>,
     pub category: Option<String>,
     pub system_only: bool,
+    pub material_kind: Option<String>,
     pub offset: u32,
     pub limit: Option<u32>,
 }
@@ -100,6 +110,9 @@ pub struct BulkInput {
 pub struct TrashItem {
     pub r#ref: EntityRef,
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub material_kind: Option<String>,
     #[ts(type = "number")]
     pub deleted_at: i64,
 }

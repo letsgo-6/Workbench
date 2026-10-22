@@ -5,6 +5,18 @@ use crate::{
 use rusqlite::{Connection, Transaction, params, params_from_iter, types::Value};
 use std::collections::HashMap;
 
+/// Check batch timestamps and protect any subsequently attached task content.
+pub fn capture_unchanged(conn: &Connection, r: &EntityRef, created_at: i64) -> AppResult<bool> {
+    let child_guard = if r.entity_type == EntityType::Todo {
+        " AND NOT EXISTS(SELECT 1 FROM todo child WHERE child.parent_id=todo.id)"
+    } else if r.entity_type == EntityType::Material {
+        " AND NOT EXISTS(SELECT 1 FROM material_asset child WHERE child.material_id=material.id)"
+    } else {
+        ""
+    };
+    Ok(conn.query_row(&format!("SELECT EXISTS(SELECT 1 FROM {} WHERE id=? AND deleted_at IS NULL AND created_at=? AND updated_at=?{child_guard})",r.entity_type.table()),params![r.id,created_at,created_at],|row|row.get(0))?)
+}
+
 /// Shared metadata mapping for typed entity rows.
 pub fn origin(row: &rusqlite::Row<'_>) -> rusqlite::Result<Option<Origin>> {
     let kind: Option<String> = row.get("origin_type")?;
@@ -252,6 +264,15 @@ pub fn filters(
             }
         }
         EntityType::Skill => {}
+        EntityType::Material => {
+            if let Some(kind) = &query.material_kind {
+                if !["work", "component"].contains(&kind.as_str()) {
+                    return Err(AppError::Invalid("Invalid material kind".into()));
+                }
+                sql.push_str(" AND kind=?");
+                args.push(Value::Text(kind.clone()));
+            }
+        }
     }
     Ok((sql, args, order))
 }

@@ -16,6 +16,7 @@ export function AiMenu({
     : actionKeys.filter(
         (k) =>
           (k !== 'skill_describe' &&
+            k !== 'smart_capture' &&
             k !== 'optimize_prompt' &&
             k !== 'daily_summary' &&
             k !== 'breakdown_todos') ||

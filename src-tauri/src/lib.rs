@@ -9,7 +9,7 @@ pub mod repo;
 pub mod services;
 pub mod startup;
 pub mod state;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 /// Start the desktop application and its offline database.
 pub fn run() {
     startup::probe("rust-entry");
@@ -65,7 +65,9 @@ pub fn run() {
                     .is_ok_and(|s| s.general_close_to_tray)
             {
                 api.prevent_close();
-                let _ = window.hide();
+                if window.hide().is_ok() {
+                    let _ = window.emit("main-window-visibility", false);
+                }
             }
         })
         .setup(|app| {
@@ -74,20 +76,30 @@ pub fn run() {
                 paths::AppPaths::resolve(app.path().app_config_dir()?, app.path().app_data_dir()?)?;
             let db = db::Db::open(&paths.db_path, &paths.backups_dir)?;
             startup::probe("database-ready");
-            db.with_tx(|tx| repo::trash::cleanup(tx, chrono::Utc::now().timestamp_millis()))?;
+            app.asset_protocol_scope()
+                .allow_directory(&paths.assets_dir, true)?;
+            services::assets::maintenance(
+                &db,
+                &paths.assets_dir,
+                chrono::Utc::now().timestamp_millis(),
+            )?;
             db.with_tx(services::ai::actions::seed_system_templates)?;
             let settings = db.with_conn(repo::settings::get_all)?;
             let ai = services::ai::AiService::new(&settings.network_proxy)?;
             let cleanup_db = db.clone();
+            let cleanup_assets = paths.assets_dir.clone();
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 loop {
                     tokio::time::sleep(std::time::Duration::from_secs(86400)).await;
                     let cleanup_db = cleanup_db.clone();
+                    let assets = cleanup_assets.clone();
                     let result = tauri::async_runtime::spawn_blocking(move || {
-                        cleanup_db.with_tx(|tx| {
-                            repo::trash::cleanup(tx, chrono::Utc::now().timestamp_millis())
-                        })
+                        services::assets::maintenance(
+                            &cleanup_db,
+                            &assets,
+                            chrono::Utc::now().timestamp_millis(),
+                        )
                     })
                     .await;
                     if matches!(result, Ok(Ok(()))) {
@@ -102,6 +114,7 @@ pub fn run() {
                 secrets: services::secrets::SecretStore::default(),
                 shortcuts: desktop::shortcut::Shortcuts::default(),
                 credential_mutations: parking_lot::Mutex::new(()),
+                asset_mutations: parking_lot::Mutex::new(()),
             });
             let state = app.state::<state::AppState>();
             // An occupied/invalid user shortcut is recoverable and visible in settings.
@@ -121,6 +134,20 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::materials::material_list,
+            commands::materials::material_get,
+            commands::materials::material_create,
+            commands::materials::material_update,
+            commands::materials::material_set_starred,
+            commands::materials::material_delete,
+            commands::materials::material_import_files,
+            commands::materials::material_import_bytes,
+            commands::materials::asset_set_thumbnail,
+            commands::materials::asset_reorder,
+            commands::materials::asset_delete,
+            commands::materials::material_set_cover,
+            commands::materials::assets_usage,
+            commands::materials::material_discard_empty,
             commands::ideas::idea_list,
             commands::ideas::idea_get,
             commands::ideas::idea_create,
@@ -173,7 +200,11 @@ pub fn run() {
             commands::trash::trash_restore,
             commands::trash::trash_purge,
             commands::trash::trash_empty,
-            commands::dashboard::dashboard_get,
+            commands::home::home_overview,
+            commands::capture::capture_analyze,
+            commands::capture::capture_analyze_stream,
+            commands::capture::capture_commit,
+            commands::capture::capture_undo,
             commands::data::entity_bulk_delete,
             commands::data::entity_bulk_add_tags,
             commands::providers::provider_list,
@@ -189,6 +220,7 @@ pub fn run() {
             commands::ai::ai_template_reset,
             commands::ai::ai_parse_result,
             commands::data::data_export_json,
+            commands::data::data_export_backup,
             commands::data::data_import_json,
             commands::data::data_open_dir,
             commands::data::data_change_dir,

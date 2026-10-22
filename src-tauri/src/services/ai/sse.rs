@@ -5,13 +5,21 @@ pub struct Decoder {
     buffer: Vec<u8>,
     data: Vec<String>,
     pub done: bool,
+    with_reasoning: bool,
 }
 #[derive(Debug, PartialEq)]
 pub enum Chunk {
     Text(String),
+    Reasoning(String),
     Finish(Option<String>),
 }
 impl Decoder {
+    pub fn with_reasoning() -> Self {
+        Self {
+            with_reasoning: true,
+            ..Self::default()
+        }
+    }
     /// Decode complete SSE events, retaining incomplete lines.
     pub fn push(&mut self, bytes: &[u8], eof: bool) -> AppResult<Vec<Chunk>> {
         self.buffer.extend_from_slice(bytes);
@@ -64,6 +72,14 @@ impl Decoder {
                 "Provider returned an error event",
             ));
         }
+        if self.with_reasoning
+            && let Some(text) = value
+                .pointer("/choices/0/delta/reasoning_content")
+                .and_then(|v| v.as_str())
+            && !text.is_empty()
+        {
+            output.push(Chunk::Reasoning(text.into()));
+        }
         if let Some(text) = value
             .pointer("/choices/0/delta/content")
             .and_then(|v| v.as_str())
@@ -110,5 +126,22 @@ mod tests {
                 .push(b"data: {\"error\":{\"message\":\"secret\"}}\n\n", false)
                 .is_err()
         );
+    }
+    #[test]
+    fn reasoning_requires_opt_in_and_survives_split_utf8() {
+        let wire = "data: {\"choices\":[{\"delta\":{\"reasoning_content\":\"先辨认中文\",\"content\":\"输出\"}}]}\r\n\r\ndata: [DONE]\n\n";
+        let mut decoder = Decoder::with_reasoning();
+        let mut chunks = vec![];
+        for byte in wire.bytes() {
+            chunks.extend(decoder.push(&[byte], false).unwrap());
+        }
+        assert_eq!(
+            chunks,
+            vec![
+                Chunk::Reasoning("先辨认中文".into()),
+                Chunk::Text("输出".into())
+            ]
+        );
+        assert!(decoder.done);
     }
 }

@@ -27,8 +27,8 @@ fn v1_migration_preserves_data_and_runs_once() {
         [],
     )
     .unwrap();
-    db::migrate::run(&mut c).unwrap();
-    db::migrate::run(&mut c).unwrap();
+    db::migrate::legacy_v2(&mut c).unwrap();
+    db::migrate::legacy_v2(&mut c).unwrap();
     let row = repo::todos::get(&c, "old").unwrap();
     assert_eq!(row.title, "旧待办");
     assert!(row.remind_at.is_none());
@@ -345,7 +345,7 @@ fn json_v2_roundtrip_new_tables_and_v1_upgrade() {
         Ok(())
     })
     .unwrap();
-    let original = serde_json::to_value(db.with_conn(data::export).unwrap()).unwrap();
+    let original = serde_json::to_value(db.with_conn(data::export_v2_fixture).unwrap()).unwrap();
     assert_eq!(original["schemaVersion"], 2);
     assert_eq!(original["formatVersion"], 1);
     let path = dir.path().join("v2.json");
@@ -358,7 +358,7 @@ fn json_v2_roundtrip_new_tables_and_v1_upgrade() {
         .unwrap();
     assert_eq!(
         original["data"],
-        serde_json::to_value(other.with_conn(data::export).unwrap()).unwrap()["data"]
+        serde_json::to_value(other.with_conn(data::export_v2_fixture).unwrap()).unwrap()["data"]
     );
     assert_eq!(
         other
@@ -382,7 +382,7 @@ fn json_v2_roundtrip_new_tables_and_v1_upgrade() {
     other
         .with_tx(|tx| data::apply(tx, &v1, "overwrite"))
         .unwrap();
-    let after = serde_json::to_value(other.with_conn(data::export).unwrap()).unwrap();
+    let after = serde_json::to_value(other.with_conn(data::export_v2_fixture).unwrap()).unwrap();
     assert!(after["data"]["aiMessages"].as_array().unwrap().is_empty());
     assert!(after["data"]["todos"][0]["remind_at"].is_null());
     let mut bad = original.clone();
@@ -396,7 +396,7 @@ fn json_v2_roundtrip_new_tables_and_v1_upgrade() {
     );
     assert_eq!(
         after["data"],
-        serde_json::to_value(other.with_conn(data::export).unwrap()).unwrap()["data"]
+        serde_json::to_value(other.with_conn(data::export_v2_fixture).unwrap()).unwrap()["data"]
     );
 }
 #[test]

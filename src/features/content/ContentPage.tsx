@@ -20,6 +20,7 @@ import { useUi } from '@/stores/ui';
 import type { EntityType } from '@/types/bindings/EntityType';
 import { t } from '@/i18n';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import { toInput, emptyDraft } from './draft';
 import { useContentList, useAction } from './hooks';
 import { ContentDetail } from './ContentDetail';
@@ -43,6 +44,26 @@ export function ContentPage({ kind }: { kind: EntityType }) {
     grouped: false,
   });
   const { q, tag, starred, tool, category, cards, grouped } = filters;
+  const hasFilters = Boolean(
+    q ||
+    tag ||
+    starred ||
+    tool ||
+    category ||
+    params.get('date') ||
+    (params.get('view') && params.get('view') !== 'all'),
+  );
+  function clearFilters() {
+    setFilters((f) => ({
+      ...f,
+      q: '',
+      tag: '',
+      starred: false,
+      tool: '',
+      category: '',
+    }));
+    setParams({});
+  }
   function setFilter<K extends keyof ContentFilters>(
     key: K,
     value: ContentFilters[K],
@@ -139,14 +160,12 @@ export function ContentPage({ kind }: { kind: EntityType }) {
     if (q && hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [q, hasNextPage, isFetchingNextPage, fetchNextPage]);
   useEffect(() => {
-    const clear = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setSelection([]);
-        setContext(null);
-      }
+    const clear = () => {
+      setSelection([]);
+      setContext(null);
     };
-    window.addEventListener('keydown', clear);
-    return () => window.removeEventListener('keydown', clear);
+    window.addEventListener('clear-selection', clear);
+    return () => window.removeEventListener('clear-selection', clear);
   }, [setSelection]);
   async function remove(itemId: string) {
     await contentApi(kind).delete(itemId);
@@ -210,7 +229,19 @@ export function ContentPage({ kind }: { kind: EntityType }) {
             ) : query.error ? (
               <Failure error={query.error} retry={() => void query.refetch()} />
             ) : !filtered.length ? (
-              <EmptyState onCreate={() => action.mutate(create)} />
+              hasFilters ? (
+                <div className="filtered-empty">
+                  <EmptyState
+                    title={t('common.noMatches')}
+                    description={t('common.noMatchesHint')}
+                  />
+                  <Button variant="outline" onClick={clearFilters}>
+                    {t('common.clearFilters')}
+                  </Button>
+                </div>
+              ) : (
+                <EmptyState onCreate={() => action.mutate(create)} />
+              )
             ) : (
               <ContentList
                 kind={kind}

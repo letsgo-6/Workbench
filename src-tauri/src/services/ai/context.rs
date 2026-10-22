@@ -30,6 +30,19 @@ pub fn build(conn: &Connection, input: &AiInput, limit: usize) -> AppResult<(Str
             let mut parts = vec![];
             for (i, r) in refs.iter().enumerate() {
                 let (body, date) = match r.entity_type {
+                    EntityType::Material => {
+                        let e = repo::materials::get(conn, &r.id)?;
+                        (
+                            format!(
+                                "{}\n{}\n{}\n{}",
+                                e.title,
+                                e.url.unwrap_or_default(),
+                                e.note_md,
+                                e.prompt
+                            ),
+                            e.created_at.to_string(),
+                        )
+                    }
                     EntityType::Idea => {
                         let e = repo::ideas::get(conn, &r.id)?;
                         (e.content_md, e.date)

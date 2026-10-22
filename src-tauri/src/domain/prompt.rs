@@ -15,6 +15,9 @@ pub struct Prompt {
     pub use_count: i32,
     pub is_system_template: bool,
     pub template_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub has_new_default: Option<bool>,
     pub is_starred: bool,
     pub origin: Option<Origin>,
     #[ts(type = "number")]

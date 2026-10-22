@@ -21,6 +21,7 @@ export const actionKeys = [
   'skill_describe',
   'breakdown_todos',
   'daily_summary',
+  'smart_capture',
 ] as const;
 export type ActionKey = (typeof actionKeys)[number];
 export interface Target extends EntityRef {
@@ -62,6 +63,7 @@ interface AiState {
   messages: ChatMessage[];
   conversationId: string | null;
   chatEpoch: number;
+  composerText: string;
   editor: EditorBinding | null;
   patch: (partial: Partial<AiState>) => void;
 }
@@ -76,6 +78,7 @@ export const useAiStore = create<AiState>((set) => ({
   messages: [],
   conversationId: null,
   chatEpoch: 0,
+  composerText: '',
   editor: null,
   patch: (partial) => set(partial),
 }));

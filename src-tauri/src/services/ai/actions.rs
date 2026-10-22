@@ -5,8 +5,13 @@ use crate::{
     services::template,
 };
 use rusqlite::{Connection, Transaction, params};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-pub const KEYS: [&str; 12] = [
+const OLD_CAPTURE_BODY_SHA256: &str =
+    "20c7e0d26999f740bbc0792e5ec0b7bea3e2ffcfb9b1bf3ae410fd8423796822";
+const OLD_CAPTURE_SYSTEM_SHA256: &str =
+    "ab2aabc5976890e15381e74f75438b4f694be01fdfbbe2d1eb5dae094a0a00bd";
+pub const KEYS: [&str; 13] = [
     "polish",
     "shorten",
     "expand",
@@ -19,8 +24,9 @@ pub const KEYS: [&str; 12] = [
     "skill_describe",
     "breakdown_todos",
     "daily_summary",
+    "smart_capture",
 ];
-const DEFAULTS: [(&str, &str); 12] = [
+const DEFAULTS: [(&str, &str); 13] = [
     ("润色优化", include_str!("../../../templates/polish.md")),
     ("精简", include_str!("../../../templates/shorten.md")),
     ("扩写", include_str!("../../../templates/expand.md")),
@@ -54,6 +60,10 @@ const DEFAULTS: [(&str, &str); 12] = [
         "每日小结",
         include_str!("../../../templates/daily_summary.md"),
     ),
+    (
+        "智能整理",
+        include_str!("../../../templates/smart_capture.md"),
+    ),
 ];
 fn defaults(index: usize) -> (&'static str, &'static str, &'static str) {
     let (name, raw) = DEFAULTS[index];
@@ -68,6 +78,21 @@ pub fn seed_system_templates(tx: &Transaction<'_>) -> AppResult<()> {
     let now = chrono::Utc::now().timestamp_millis();
     for (i, key) in KEYS.iter().enumerate() {
         let (title, system, body) = defaults(i);
+        if *key == "smart_capture" {
+            let previous = tx.query_row(
+                "SELECT body,coalesce(system_prompt,'') FROM prompt WHERE template_key=?",
+                [key],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+            );
+            if let Ok((old_body, old_system)) = previous
+                && crate::services::assets::hex(Sha256::digest(old_body.as_bytes()).as_ref())
+                    == OLD_CAPTURE_BODY_SHA256
+                && crate::services::assets::hex(Sha256::digest(old_system.as_bytes()).as_ref())
+                    == OLD_CAPTURE_SYSTEM_SHA256
+            {
+                tx.execute("UPDATE prompt SET body=?,system_prompt=?,variables=?,updated_at=? WHERE template_key=?",params![body,system,serde_json::to_string(&template::variables(body))?,now,key])?;
+            }
+        }
         tx.execute("INSERT OR IGNORE INTO prompt(id,title,body,system_prompt,variables,category,is_system_template,template_key,created_at,updated_at) VALUES (?,?,?,?,?,'系统模板',1,?,?,?)",params![uuid::Uuid::now_v7().to_string(),title,body,system,serde_json::to_string(&template::variables(body))?,key,now,now])?;
     }
     Ok(())
@@ -80,7 +105,13 @@ pub fn list(conn: &Connection) -> AppResult<Vec<Prompt>> {
             conn.query_row("SELECT id FROM prompt WHERE template_key=?", [key], |r| {
                 r.get(0)
             })?;
-        out.push(repo::prompts::get(conn, &id)?);
+        let mut prompt = repo::prompts::get(conn, &id)?;
+        if key == "smart_capture" {
+            let (_, system, body) = defaults(KEYS.len() - 1);
+            prompt.has_new_default =
+                Some(prompt.body != body || prompt.system_prompt.as_deref() != Some(system));
+        }
+        out.push(prompt);
     }
     Ok(out)
 }
@@ -103,6 +134,22 @@ pub fn messages(
     action: &str,
     input: &AiInput,
     limit: usize,
+) -> AppResult<(Vec<ChatMessage>, bool)> {
+    messages_at(
+        conn,
+        action,
+        input,
+        limit,
+        chrono::Local::now().naive_local(),
+    )
+}
+/// Render capture prompts against the same local clock used for date normalization.
+pub fn messages_at(
+    conn: &Connection,
+    action: &str,
+    input: &AiInput,
+    limit: usize,
+    now: chrono::NaiveDateTime,
 ) -> AppResult<(Vec<ChatMessage>, bool)> {
     if !KEYS.contains(&action) {
         return Err(AppError::Invalid("Unknown AI action".into()));
@@ -139,11 +186,30 @@ pub fn messages(
         .map(|t| t.name)
         .collect::<Vec<_>>()
         .join(", ");
+    use chrono::Datelike;
+    let weekday = [
+        "星期一",
+        "星期二",
+        "星期三",
+        "星期四",
+        "星期五",
+        "星期六",
+        "星期日",
+    ][now.weekday().num_days_from_monday() as usize];
+    let settings = repo::settings::get_all(conn)?;
+    let tools = crate::domain::tip::PRESET_TOOLS
+        .into_iter()
+        .map(str::to_string)
+        .chain(settings.tips_custom_tools)
+        .collect::<Vec<_>>()
+        .join("、");
     let values: HashMap<String, String> = [
         ("input", text.clone()),
         ("items", text),
         ("existing_tags", tags),
-        ("today", chrono::Local::now().format("%Y-%m-%d").to_string()),
+        ("today", now.format("%Y-%m-%d").to_string()),
+        ("now", format!("{} {weekday}", now.format("%Y-%m-%d %H:%M"))),
+        ("known_tools", tools),
     ]
     .into_iter()
     .map(|(k, v)| (k.into(), v))

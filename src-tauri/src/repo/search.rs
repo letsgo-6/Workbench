@@ -18,6 +18,11 @@ pub fn remove(tx: &Transaction<'_>, r: &EntityRef) -> AppResult<()> {
 pub fn upsert(tx: &Transaction<'_>, r: &EntityRef) -> AppResult<()> {
     remove(tx, r)?;
     let (title, body, extra) = match r.entity_type {
+        EntityType::Material => (
+            "title",
+            "note_md || ' ' || prompt || ' ' || coalesce(url,'') || ' ' || coalesce((SELECT group_concat(original_name,' ') FROM material_asset WHERE material_id=material.id),'')",
+            "",
+        ),
         EntityType::Idea => ("content_md", "content_md", ""),
         EntityType::Todo => ("title", "note_md", ""),
         EntityType::Tip => ("title", "content_md || ' ' || tools", ""),

@@ -16,12 +16,14 @@ use std::{
     collections::{HashMap, HashSet},
     path::Path,
 };
-const TABLES: [(&str, &str); 11] = [
+const TABLES: [(&str, &str); 13] = [
     ("ideas", "idea"),
     ("todos", "todo"),
     ("tips", "tip"),
     ("skills", "skill"),
     ("prompts", "prompt"),
+    ("materials", "material"),
+    ("materialAssets", "material_asset"),
     ("tags", "tag"),
     ("entityTags", "entity_tag"),
     ("aiProviders", "ai_provider"),
@@ -32,11 +34,13 @@ const TABLES: [(&str, &str); 11] = [
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Backup {
-    app: String,
-    format_version: u32,
-    schema_version: u32,
-    exported_at: i64,
-    data: Map<String, Value>,
+    pub(crate) app: String,
+    pub(crate) format_version: u32,
+    pub(crate) schema_version: u32,
+    pub(crate) exported_at: i64,
+    pub(crate) data: Map<String, Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) asset_hashes: Option<std::collections::BTreeMap<String, String>>,
 }
 fn invalid() -> AppError {
     AppError::coded(
@@ -85,6 +89,9 @@ pub fn export(conn: &Connection) -> AppResult<Backup> {
     let mut settings = Map::new();
     for value in rows(conn, "setting")? {
         if let (Some(k), Some(v)) = (value["key"].as_str(), value["value"].as_str()) {
+            if k == "capture.smartDefault" {
+                continue;
+            }
             settings.insert(k.into(), serde_json::from_str(v)?);
         }
     }
@@ -92,24 +99,49 @@ pub fn export(conn: &Connection) -> AppResult<Backup> {
     Ok(Backup {
         app: "workbench".into(),
         format_version: 1,
-        schema_version: 2,
+        schema_version: 3,
         exported_at: chrono::Utc::now().timestamp_millis(),
         data,
+        asset_hashes: None,
     })
+}
+#[cfg(test)]
+pub fn export_v2_fixture(conn: &Connection) -> AppResult<Backup> {
+    let mut backup = export(conn)?;
+    backup.schema_version = 2;
+    backup.data.remove("materials");
+    backup.data.remove("materialAssets");
+    Ok(backup)
 }
 /// Decode and validate against the fixed schema before touching live data or credentials.
 pub fn read(conn: &Connection, path: &Path) -> AppResult<Backup> {
     if std::fs::metadata(path)?.len() > 50_000_000 {
         return Err(invalid());
     }
-    let mut backup: Backup =
-        serde_json::from_slice(&std::fs::read(path)?).map_err(|_| invalid())?;
+    decode(conn, &std::fs::read(path)?)
+}
+/// Validate JSON before files, credentials or live database rows are touched.
+pub fn decode(conn: &Connection, bytes: &[u8]) -> AppResult<Backup> {
+    if bytes.len() > 50_000_000 {
+        return Err(invalid());
+    }
+    let mut backup: Backup = serde_json::from_slice(bytes).map_err(|_| invalid())?;
     if backup.app != "workbench"
         || backup.format_version != 1
-        || !(1..=2).contains(&backup.schema_version)
-        || backup.data.len() != if backup.schema_version == 1 { 9 } else { 12 }
+        || !(1..=3).contains(&backup.schema_version)
+        || backup.data.len()
+            != match backup.schema_version {
+                1 => 9,
+                2 => 12,
+                _ => 14,
+            }
     {
         return Err(invalid());
+    }
+    if backup.schema_version < 3 {
+        for key in ["materials", "materialAssets"] {
+            backup.data.insert(key.into(), Value::Array(vec![]));
+        }
     }
     if backup.schema_version == 1 {
         for key in ["promptVersions", "aiConversations", "aiMessages"] {
@@ -154,6 +186,72 @@ pub fn read(conn: &Connection, path: &Path) -> AppResult<Backup> {
             if table == "ai_provider" {
                 super::providers::validate_url(row["base_url"].as_str().ok_or_else(invalid)?)
                     .map_err(|_| invalid())?;
+            }
+            if table == "material_asset" {
+                let name = row["file_name"].as_str().ok_or_else(invalid)?;
+                let id = row["id"].as_str().ok_or_else(invalid)?;
+                let (media_kind, mime) = match std::path::Path::new(name)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                {
+                    Some("png") => ("image", "image/png"),
+                    Some("jpg" | "jpeg") => ("image", "image/jpeg"),
+                    Some("webp") => ("image", "image/webp"),
+                    Some("gif") => ("gif", "image/gif"),
+                    Some("mp4") => ("video", "video/mp4"),
+                    Some("webm") => ("video", "video/webm"),
+                    _ => return Err(invalid()),
+                };
+                if row["media_kind"].as_str() != Some(media_kind)
+                    || row["mime"].as_str() != Some(mime)
+                    || row["size_bytes"].as_u64().is_none_or(|s| {
+                        s > if media_kind == "video" {
+                            super::assets::VIDEO_LIMIT
+                        } else {
+                            super::assets::IMAGE_LIMIT
+                        }
+                    })
+                {
+                    return Err(invalid());
+                }
+                if !super::assets::valid_relative(name)
+                    || std::path::Path::new(name)
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        != Some(id)
+                    || row["sha256"].as_str().is_none_or(|s| {
+                        s.len() != 64
+                            || !s
+                                .bytes()
+                                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                    })
+                    || row["size_bytes"]
+                        .as_u64()
+                        .is_none_or(|n| n == 0 || n > super::assets::VIDEO_LIMIT)
+                {
+                    return Err(invalid());
+                }
+                if !row["thumb_name"].is_null()
+                    && row["thumb_name"].as_str() != Some(format!("thumbs/{id}.webp").as_str())
+                {
+                    return Err(invalid());
+                }
+            }
+            if table == "material" {
+                let text = |key| row[key].as_str().map(str::to_string).ok_or_else(invalid);
+                let mut input = crate::domain::material::MaterialInput {
+                    kind: text("kind")?,
+                    title: text("title")?,
+                    note_md: text("note_md")?,
+                    prompt: text("prompt")?,
+                    url: if row["url"].is_null() {
+                        None
+                    } else {
+                        Some(text("url")?)
+                    },
+                    ..Default::default()
+                };
+                super::assets::validate_input(&mut input).map_err(|_| invalid())?;
             }
             if table == "ai_message" {
                 let refs: Vec<EntityRef> =
@@ -210,7 +308,7 @@ pub fn apply(tx: &Transaction<'_>, backup: &Backup, mode: &str) -> AppResult<Imp
     }
     tx.execute_batch("PRAGMA defer_foreign_keys=ON;")?;
     if mode == "overwrite" {
-        tx.execute_batch("DELETE FROM ai_message;DELETE FROM ai_conversation;DELETE FROM prompt_version;DELETE FROM entity_tag;DELETE FROM todo;DELETE FROM idea;DELETE FROM tip;DELETE FROM skill;DELETE FROM prompt;DELETE FROM tag;DELETE FROM ai_provider;DELETE FROM setting;DELETE FROM search_index;")?;
+        tx.execute_batch("DELETE FROM material_asset;DELETE FROM material;DELETE FROM ai_message;DELETE FROM ai_conversation;DELETE FROM prompt_version;DELETE FROM entity_tag;DELETE FROM todo;DELETE FROM idea;DELETE FROM tip;DELETE FROM skill;DELETE FROM prompt;DELETE FROM tag;DELETE FROM ai_provider;DELETE FROM setting;DELETE FROM search_index;")?;
     }
     let mut report = ImportReport {
         inserted: 0,
@@ -269,6 +367,33 @@ pub fn apply(tx: &Transaction<'_>, backup: &Backup, mode: &str) -> AppResult<Imp
                 }
             }
             let id = row["id"].as_str().ok_or_else(invalid)?;
+            if table == "material_asset" {
+                let material = row["material_id"].as_str().ok_or_else(invalid)?;
+                let previous: Option<(String, String)> = tx
+                    .query_row(
+                        "SELECT sha256,file_name FROM material_asset WHERE id=?",
+                        [id],
+                        |r| Ok((r.get(0)?, r.get(1)?)),
+                    )
+                    .optional()?;
+                if let Some((hash, name)) = &previous
+                    && (Some(hash.as_str()) != row["sha256"].as_str()
+                        || Some(name.as_str()) != row["file_name"].as_str())
+                {
+                    return Err(invalid());
+                }
+                if !winners.contains(&("material".into(), material.into())) {
+                    report.skipped += 1;
+                    continue;
+                }
+                insert(tx, table, &row)?;
+                if previous.is_some() {
+                    report.updated += 1;
+                } else {
+                    report.inserted += 1;
+                }
+                continue;
+            }
             entity_ids.insert(
                 (
                     table.to_string(),
@@ -329,11 +454,18 @@ pub fn apply(tx: &Transaction<'_>, backup: &Backup, mode: &str) -> AppResult<Imp
         )?;
     }
     for (key, value) in backup.data["settings"].as_object().ok_or_else(invalid)? {
+        if key == "capture.smartDefault" {
+            continue;
+        }
         repo::settings::set(tx, key, value).map_err(|_| invalid())?;
     }
     tx.execute("UPDATE ai_provider SET is_default=(id=(SELECT id FROM ai_provider ORDER BY is_default DESC,sort_order,created_at LIMIT 1))",[])?;
     let nested:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM todo child JOIN todo parent ON child.parent_id=parent.id WHERE parent.parent_id IS NOT NULL)",[],|r|r.get(0))?;
     if nested {
+        return Err(invalid());
+    }
+    let bad_cover:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM material m WHERE cover_asset_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM material_asset a WHERE a.id=m.cover_asset_id AND a.material_id=m.id))",[],|r|r.get(0))?;
+    if bad_cover {
         return Err(invalid());
     }
     tx.execute("DELETE FROM prompt_version WHERE id IN (SELECT id FROM (SELECT id,row_number() OVER (PARTITION BY prompt_id ORDER BY created_at DESC,id DESC) n FROM prompt_version) WHERE n>50)",[])?;

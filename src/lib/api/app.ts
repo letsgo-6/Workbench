@@ -4,7 +4,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { Dashboard } from '@/types/bindings/Dashboard';
+import type { HomeOverview } from '@/types/bindings/HomeOverview';
 import type { Settings } from '@/types/bindings/Settings';
 import type { Tag } from '@/types/bindings/Tag';
 import type { EntityRef } from '@/types/bindings/EntityRef';
@@ -15,7 +15,7 @@ import type { ParsedSkill } from '@/types/bindings/ParsedSkill';
 import type { ReadSkill } from '@/types/bindings/ReadSkill';
 import { t } from '@/i18n';
 export const appApi = {
-  dashboard: () => ipc<Dashboard>('dashboard_get'),
+  home: () => ipc<HomeOverview>('home_overview'),
   settings: () => ipc<Settings>('settings_get_all'),
   setSetting: (key: string, value: unknown) =>
     ipc<Settings>('settings_set', { key, value }),

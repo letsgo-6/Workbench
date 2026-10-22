@@ -29,31 +29,30 @@ pub fn trash_purge(
     state: tauri::State<'_, AppState>,
     input: EntityRef,
 ) -> AppResult<()> {
-    state.db.with_tx(|tx| {
-        repo::common::mutate(
-            tx,
-            &input,
-            "purge",
-            chrono::Utc::now().timestamp_millis(),
-            false,
-        )
-    })?;
+    let _guard = state.asset_mutations.lock();
+    crate::services::assets::purge_entities(
+        &state.db,
+        &state.paths.assets_dir,
+        &[input],
+        chrono::Utc::now().timestamp_millis(),
+    )?;
     events::emit_data_changed(&app, "all", "purge")
 }
 /// Permanently empty the recycle bin in one transaction.
 #[tauri::command(async)]
 pub fn trash_empty(app: tauri::AppHandle, state: tauri::State<'_, AppState>) -> AppResult<()> {
-    state.db.with_tx(|tx| {
-        for item in repo::trash::list(tx)? {
-            repo::common::mutate(
-                tx,
-                &item.r#ref,
-                "purge",
-                chrono::Utc::now().timestamp_millis(),
-                false,
-            )?;
-        }
-        Ok(())
-    })?;
+    let _guard = state.asset_mutations.lock();
+    let refs = state
+        .db
+        .with_conn(repo::trash::list)?
+        .into_iter()
+        .map(|i| i.r#ref)
+        .collect::<Vec<_>>();
+    crate::services::assets::purge_entities(
+        &state.db,
+        &state.paths.assets_dir,
+        &refs,
+        chrono::Utc::now().timestamp_millis(),
+    )?;
     events::emit_data_changed(&app, "all", "purge")
 }

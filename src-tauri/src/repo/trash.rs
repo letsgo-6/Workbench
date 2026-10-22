@@ -1,6 +1,6 @@
 use crate::{domain::common::*, error::AppResult};
 use rusqlite::{Connection, Transaction};
-/// Return deleted records across all five modules.
+/// Return deleted records across all six modules.
 pub fn list(conn: &Connection) -> AppResult<Vec<TrashItem>> {
     let mut items = vec![];
     for kind in EntityType::ALL {
@@ -15,7 +15,12 @@ pub fn list(conn: &Connection) -> AppResult<Vec<TrashItem>> {
             ""
         };
         let mut stmt = conn.prepare(&format!(
-            "SELECT id,{title},deleted_at FROM {} WHERE deleted_at IS NOT NULL{extra}",
+            "SELECT id,{title},deleted_at,{} FROM {} WHERE deleted_at IS NOT NULL{extra}",
+            if kind == EntityType::Material {
+                "kind"
+            } else {
+                "NULL"
+            },
             kind.table()
         ))?;
         items.extend(
@@ -34,6 +39,7 @@ pub fn list(conn: &Connection) -> AppResult<Vec<TrashItem>> {
                         .take(80)
                         .collect(),
                     deleted_at: r.get(2)?,
+                    material_kind: r.get(3)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?,

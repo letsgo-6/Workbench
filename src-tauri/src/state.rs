@@ -8,4 +8,5 @@ pub struct AppState {
     pub secrets: crate::services::secrets::SecretStore,
     pub shortcuts: crate::desktop::shortcut::Shortcuts,
     pub credential_mutations: parking_lot::Mutex<()>,
+    pub asset_mutations: parking_lot::Mutex<()>,
 }

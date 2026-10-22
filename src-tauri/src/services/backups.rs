@@ -56,14 +56,19 @@ pub fn validate(path: &Path) -> AppResult<()> {
         rusqlite::Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let check: String = conn.query_row("PRAGMA quick_check", [], |r| r.get(0))?;
     let version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    let tables:u32=conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('idea','todo','tip','skill','prompt','tag','entity_tag','ai_provider','setting','prompt_version','ai_conversation','ai_message')",[],|r|r.get(0))?;
+    let tables:u32=conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('idea','todo','tip','skill','prompt','tag','entity_tag','ai_provider','setting','prompt_version','ai_conversation','ai_message','material','material_asset')",[],|r|r.get(0))?;
     let foreign_key_errors: u32 =
         conn.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
             r.get(0)
         })?;
     if check != "ok"
-        || !(1..=2).contains(&version)
-        || tables != if version == 1 { 9 } else { 12 }
+        || !(1..=3).contains(&version)
+        || tables
+            != match version {
+                1 => 9,
+                2 => 12,
+                _ => 14,
+            }
         || foreign_key_errors != 0
     {
         return Err(AppError::Invalid("Invalid database backup".into()));

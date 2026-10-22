@@ -1,6 +1,11 @@
 @import 'tailwindcss' source('../');
 @import './batch2.css';
 @import './batch3.css';
+@import './materials.css';
+@import './home.css';
+@import './motion.css';
+@import './workspace.css';
+@import './sea.css';
 
 @custom-variant dark (&:is(.dark *));
 @theme inline {
@@ -31,37 +36,53 @@
   font-family: 'Segoe UI', 'Microsoft YaHei UI', 'PingFang SC', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --background: #fcfbf8;
-  --foreground: #26372f;
-  --card: #fffefa;
-  --primary: #305f4e;
+  --background: #edf3f2;
+  --foreground: #18363d;
+  --card: #f8fbf9;
+  --primary: #76571f;
   --primary-foreground: #ffffff;
-  --secondary: #e8eee8;
-  --muted: #f0f0ea;
-  --muted-foreground: #657167;
-  --accent: #e9efe7;
-  --border: #dfe3d9;
-  --destructive: #ab4141;
-  --sidebar: #f0f1e9;
-  --selected: #e4ece1;
-  --warning: #9b5c26;
+  --secondary: #dfecea;
+  --muted: #e5eeec;
+  --muted-foreground: #506b70;
+  --accent: #d9e8e5;
+  --border: #c0d3d0;
+  --destructive: #ad424b;
+  --sidebar: #e0eae8;
+  --selected: #d1e5e1;
+  --warning: #8a5b21;
+  --sea-light: #3aabb7;
+  --scene-metal: #477780;
+  --scene-energy: #bc7a25;
+  --surface-sheet: #f3f8f5e8;
+  --surface-panel: #f8fbf9ed;
+  --surface-field: #ffffffc4;
+  --surface-line: #416e6a26;
+  --surface-shadow: #102c3329;
   color-scheme: light;
 }
 .dark {
-  --background: #1c2521;
-  --foreground: #e4e9e1;
-  --card: #222c26;
-  --primary: #91c6a7;
-  --primary-foreground: #14291e;
-  --secondary: #2b3930;
-  --muted: #26312a;
-  --muted-foreground: #a5b3a7;
-  --accent: #303f34;
-  --border: #3b473d;
-  --destructive: #ef9393;
-  --sidebar: #172019;
-  --selected: #304636;
-  --warning: #ebba87;
+  --background: #071b24;
+  --foreground: #e5f0ed;
+  --card: #102b34;
+  --primary: #edcc91;
+  --primary-foreground: #24312f;
+  --secondary: #1b3b44;
+  --muted: #17343d;
+  --muted-foreground: #a4bfbe;
+  --accent: #214650;
+  --border: #35565e;
+  --destructive: #ffa7a5;
+  --sidebar: #06171e;
+  --selected: #24454a;
+  --warning: #f1c682;
+  --sea-light: #72dde4;
+  --scene-metal: #9bd9dc;
+  --scene-energy: #ffc05a;
+  --surface-sheet: #09232bd6;
+  --surface-panel: #102b34ed;
+  --surface-field: #071e26b8;
+  --surface-line: #a6d2cf30;
+  --surface-shadow: #000c1659;
   color-scheme: dark;
 }
 * {
@@ -346,6 +367,102 @@ mark {
 }
 .quick-input {
   margin: 26px 0 42px;
+}
+.capture-preview,
+.capture-fallback {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.capture-preview h2 {
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.capture-cards {
+  display: grid;
+  gap: 14px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.capture-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.capture-card-heading,
+.capture-actions,
+.capture-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.capture-card-heading {
+  justify-content: space-between;
+}
+.capture-card-heading [data-slot='toggle-group'] {
+  flex-wrap: wrap;
+}
+.capture-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  min-width: 0;
+}
+.capture-date-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.capture-tools {
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.capture-tools label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.capture-warning {
+  color: var(--warning);
+  font-size: 12px;
+}
+.capture-low {
+  border-left: 3px solid var(--warning);
+}
+.capture-source {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  color: var(--muted-foreground);
+  margin-top: 8px;
+}
+.capture-actions {
+  margin-top: 16px;
+}
+.capture-card summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.capture-settings .check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.capture-settings p {
+  margin-bottom: 12px;
 }
 .capture-field {
   border: 1px solid var(--border);

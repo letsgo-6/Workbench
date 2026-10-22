@@ -3,6 +3,17 @@ import { AppShell } from './layout/AppShell';
 import { Failure, Loading } from '@/components/common/Feedback';
 import { t } from '@/i18n';
 export const router = createHashRouter([
+  ...(import.meta.env.DEV
+    ? [
+        {
+          path: '/__lab/neuron',
+          lazy: async () => ({
+            Component: (await import('@/features/home/scene/lab/NeuronLab'))
+              .NeuronLab,
+          }),
+        },
+      ]
+    : []),
   {
     element: <AppShell />,
     HydrateFallback: Loading,
@@ -16,14 +27,20 @@ export const router = createHashRouter([
       {
         path: '/',
         lazy: async () => ({
-          Component: (await import('@/features/dashboard/DashboardPage'))
-            .DashboardPage,
+          Component: (await import('@/features/home/HomePage')).HomePage,
         }),
       },
       {
         path: 'ideas/:id?',
         lazy: async () => ({
           Component: (await import('@/features/ideas/IdeaPage')).IdeaPage,
+        }),
+      },
+      {
+        path: 'materials/:id?',
+        lazy: async () => ({
+          Component: (await import('@/features/materials/MaterialPage'))
+            .MaterialPage,
         }),
       },
       {

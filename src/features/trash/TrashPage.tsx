@@ -47,7 +47,16 @@ export function TrashPage() {
                   {t(`nav.${item.ref.entityType}`)} ·{' '}
                   {new Date(item.deletedAt).toLocaleDateString('zh-CN')}
                 </span>
-                <strong>{item.title || t('common.untitled')}</strong>
+                <strong>
+                  {item.title ||
+                    t(
+                      item.ref.entityType === 'material'
+                        ? item.materialKind === 'component'
+                          ? 'material.untitledComponent'
+                          : 'material.untitledWork'
+                        : 'common.untitled',
+                    )}
+                </strong>
               </div>
               <Button
                 variant="ghost"

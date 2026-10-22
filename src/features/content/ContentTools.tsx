@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import type { EntityType } from '@/types/bindings/EntityType';
+import { DailySummary } from '../ideas/DailySummary';
 import { IdeaCalendar } from '../ideas/IdeaCalendar';
 import { SkillBatchImport } from '../skills/SkillBatchImport';
 import { launch, useAiStore } from '../ai/store';
@@ -24,7 +25,12 @@ export function ContentTools({
   const [text, setText] = useState('');
   const busy = useAiStore((s) => s.status === 'streaming');
   if (kind === 'idea')
-    return <IdeaCalendar selected={date} onSelect={onDate} />;
+    return (
+      <div className="list-tools">
+        <IdeaCalendar selected={date} onSelect={onDate} />
+        <DailySummary />
+      </div>
+    );
   if (kind === 'skill')
     return (
       <div className="list-tools">

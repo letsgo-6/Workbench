@@ -6,8 +6,17 @@ pub struct PathInput {
 /// Export a complete live-content Markdown folder tree with safe unique file names.
 #[tauri::command(async)]
 pub fn data_export_markdown(state: tauri::State<'_, AppState>, input: PathInput) -> AppResult<u32> {
+    let _guard = state.asset_mutations.lock();
+    crate::services::assets::validate_export_target(
+        &state.paths,
+        std::path::Path::new(&input.path),
+    )?;
     state.db.with_conn(|c| {
-        crate::services::markdown_export::export(c, std::path::Path::new(&input.path))
+        crate::services::markdown_export::export_with_assets(
+            c,
+            std::path::Path::new(&input.path),
+            &state.paths.assets_dir,
+        )
     })
 }
 #[derive(serde::Deserialize)]
@@ -18,9 +27,27 @@ pub struct ImportInput {
 /// Write a complete JSON backup containing no credentials.
 #[tauri::command(async)]
 pub fn data_export_json(state: tauri::State<'_, AppState>, input: PathInput) -> AppResult<()> {
+    crate::services::assets::validate_export_target(
+        &state.paths,
+        std::path::Path::new(&input.path),
+    )?;
     let backup = state.db.with_conn(crate::services::data::export)?;
     std::fs::write(input.path, serde_json::to_vec_pretty(&backup)?)?;
     Ok(())
+}
+/// Export a complete portable backup containing verified original files and thumbnails.
+#[tauri::command(async)]
+pub fn data_export_backup(state: tauri::State<'_, AppState>, input: PathInput) -> AppResult<()> {
+    crate::services::assets::validate_export_target(
+        &state.paths,
+        std::path::Path::new(&input.path),
+    )?;
+    let _guard = state.asset_mutations.lock();
+    crate::services::backup_package::export(
+        &state.db,
+        &state.paths.assets_dir,
+        std::path::Path::new(&input.path),
+    )
 }
 /// Back up before a single atomic import, requiring credentials to be entered again.
 #[tauri::command(async)]
@@ -30,13 +57,27 @@ pub fn data_import_json(
     input: ImportInput,
 ) -> AppResult<crate::domain::data::ImportReport> {
     let _guard = state.credential_mutations.lock();
-    let result = crate::services::data::import(
-        &state.db,
-        &state.secrets,
-        &state.paths.backups_dir,
-        std::path::Path::new(&input.path),
-        &input.mode,
-    )?;
+    let _asset_guard = state.asset_mutations.lock();
+    let result = if std::path::Path::new(&input.path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("wbbackup"))
+    {
+        crate::services::backup_package::import(
+            &state.db,
+            &state.secrets,
+            &state.paths,
+            std::path::Path::new(&input.path),
+            &input.mode,
+        )?
+    } else {
+        crate::services::data::import(
+            &state.db,
+            &state.secrets,
+            &state.paths.backups_dir,
+            std::path::Path::new(&input.path),
+            &input.mode,
+        )?
+    };
     let settings = state.db.with_conn(repo::settings::get_all)?;
     state.ai.configure(&settings.network_proxy)?;
     let _ = crate::desktop::shortcut::update(&app, &state, &settings.shortcut_quick_capture, false);
@@ -58,16 +99,12 @@ pub fn data_change_dir(
     state: tauri::State<'_, AppState>,
     input: PathInput,
 ) -> AppResult<()> {
-    let target = std::path::PathBuf::from(input.path);
-    std::fs::create_dir_all(&target)?;
-    let target = target.canonicalize()?;
-    if target == state.paths.data_dir.canonicalize()? || target.join("workbench.db").exists() {
-        return Err(crate::error::AppError::Invalid(
-            "Choose another directory without an existing database".into(),
-        ));
-    }
-    crate::services::data::snapshot(&state.db, &target.join("workbench.db"))?;
-    state.paths.set_data_dir(target)?;
+    let _guard = state.asset_mutations.lock();
+    crate::services::assets::change_directory(
+        &state.db,
+        &state.paths,
+        std::path::Path::new(&input.path),
+    )?;
     app.restart()
 }
 /// Delete selected records atomically.

@@ -1,11 +1,13 @@
 pub mod ai;
 pub mod backup;
 pub mod calendar;
+pub mod capture;
 pub mod common;
-pub mod dashboard;
 pub mod data;
 pub mod history;
+pub mod home;
 pub mod idea;
+pub mod material;
 pub mod prompt;
 pub mod provider;
 pub mod settings;

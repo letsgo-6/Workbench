@@ -15,6 +15,7 @@ pub struct AppPaths {
     pub data_dir: PathBuf,
     pub db_path: PathBuf,
     pub backups_dir: PathBuf,
+    pub assets_dir: PathBuf,
 }
 impl AppPaths {
     /// Resolve bootstrap before opening the database.
@@ -33,6 +34,8 @@ impl AppPaths {
         };
         let data_dir = bootstrap.data_dir.clone();
         let backups_dir = data_dir.join("backups");
+        let assets_dir = data_dir.join("assets");
+        std::fs::create_dir_all(&assets_dir)?;
         std::fs::create_dir_all(&backups_dir)?;
         if let Some(name) = bootstrap.pending_restore.as_deref() {
             if !crate::services::backups::valid_name(name) {
@@ -74,6 +77,7 @@ impl AppPaths {
             db_path: data_dir.join("workbench.db"),
             data_dir,
             backups_dir,
+            assets_dir,
         })
     }
     /// Persist only the selected directory using a temporary file.

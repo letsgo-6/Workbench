@@ -2,6 +2,7 @@ import { ipc } from '../ipc';
 import type { ImportReport } from '@/types/bindings/ImportReport';
 import type { ShortcutStatus } from '@/types/bindings/ShortcutStatus';
 export const dataApi = {
+  exportBackup: (path: string) => ipc<void>('data_export_backup', { path }),
   export: (path: string) => ipc<void>('data_export_json', { path }),
   import: (path: string, mode: 'merge' | 'overwrite') =>
     ipc<ImportReport>('data_import_json', { path, mode }),

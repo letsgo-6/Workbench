@@ -5,4 +5,7 @@ src-tauri/
 src/types/bindings/
 docs/ARCHITECTURE.md
 docs/evidence/
+docs/design-refs/
+# Historical template bytes are the SHA-256 upgrade fixture, not editable prose.
+tests/fixtures/smart_capture_v021.md
 .impeccable/

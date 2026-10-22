@@ -23,6 +23,7 @@ export function BackupSettings() {
     <section>
       <h2>{t('v02.backups')}</h2>
       <p className="muted">{t('v02.backupHint')}</p>
+      <p className="muted">{t('material.dailyBackupHint')}</p>
       <label className="check-row">
         <input
           type="checkbox"

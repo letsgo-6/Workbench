@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Star, Trash2, Copy, Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { AiEditor } from '../ai/AiEditor';
 import { AiMenu } from '../ai/AiMenu';
@@ -119,118 +120,151 @@ export function EntryDetail({
         </div>
       </header>
       <div className="detail-scroll">
-        {'converted' in item && item.converted.length > 0 && (
-          <p className="origin">
-            {t('common.converted')}
-            {item.converted.map((ref) => (
-              <Link key={ref.id} to={`/${routes[ref.entityType]}/${ref.id}`}>
-                {t(`nav.${ref.entityType}`)}
-                <ArrowRight />
-              </Link>
-            ))}
-          </p>
-        )}
-        {item.origin && (
-          <p className="origin">
-            {t('common.origin')}
-            <Link to={`/${routes[item.origin.entityType]}/${item.origin.id}`}>
-              {t(`nav.${item.origin.entityType}`)}
-              <ArrowRight />
-            </Link>
-          </p>
-        )}
-        {kind === 'todo' && 'status' in item && (
-          <Button
-            variant="outline"
-            onClick={() => run(() => appApi.toggleTodo(item.id))}
-          >
-            <Check data-icon="inline-start" />
-            {t(item.status === 'done' ? 'todo.reopen' : 'todo.complete')}
-          </Button>
-        )}
-        <DetailFields
-          kind={kind}
-          draft={draft}
-          update={update}
-          onUrlBlur={() => {
-            if (kind === 'skill' && !draft.title.trim() && draft.url)
-              void appApi
-                .linkTitle(draft.url)
-                .then((title) => {
-                  if (title)
-                    setDraft((d) => ({ ...d, title: d.title || title }));
-                })
-                .catch(() => {});
-          }}
-        />
-        <Field className="tags-field">
-          <FieldLabel htmlFor="entry-tags">{t('common.tags')}</FieldLabel>
-          <TagInput
-            id="entry-tags"
-            value={draft.tags}
-            onChange={(tags) => update('tags', tags)}
-          />
-        </Field>
-        {kind === 'skill' && (
-          <SkillActions
-            id={item.id}
-            draft={draft}
-            setDraft={setDraft}
-            flush={flush}
-          />
-        )}
-        {kind === 'todo' && 'parentId' in item && !item.parentId && (
-          <Subtasks id={item.id} />
-        )}
-        {kind === 'idea' && (
-          <div className="convert-actions">
-            {(['todo', 'tip', 'prompt'] as const).map((target) => (
-              <Button
-                key={target}
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  run(async () => {
-                    const ref = await appApi.convert(item.id, target);
-                    void navigate(`/${routes[ref.entityType]}/${ref.id}`);
-                  })
-                }
-              >
-                {t(
-                  `idea.${target === 'todo' ? 'toTodo' : target === 'tip' ? 'toTip' : 'toPrompt'}`,
-                )}
-              </Button>
-            ))}
+        <div className="detail-workspace">
+          <div className="detail-writing">
+            {'converted' in item && item.converted.length > 0 && (
+              <p className="origin">
+                {t('common.converted')}
+                {item.converted.map((ref) => (
+                  <Link
+                    key={ref.id}
+                    to={`/${routes[ref.entityType]}/${ref.id}`}
+                  >
+                    {t(`nav.${ref.entityType}`)}
+                    <ArrowRight />
+                  </Link>
+                ))}
+              </p>
+            )}
+            {item.origin && (
+              <p className="origin">
+                {t('common.origin')}
+                <Link
+                  to={`/${routes[item.origin.entityType]}/${item.origin.id}`}
+                >
+                  {t(`nav.${item.origin.entityType}`)}
+                  <ArrowRight />
+                </Link>
+              </p>
+            )}
+            {kind !== 'idea' && (
+              <Field className="entry-heading">
+                <FieldLabel htmlFor="entry-title">
+                  {t(kind === 'skill' ? 'skill.name' : 'common.title')}
+                </FieldLabel>
+                <Input
+                  id="entry-title"
+                  className="title-input"
+                  value={draft.title}
+                  maxLength={kind === 'todo' ? 500 : undefined}
+                  required={kind === 'todo'}
+                  aria-invalid={kind === 'todo' && !draft.title.trim()}
+                  onChange={(e) => update('title', e.target.value)}
+                />
+              </Field>
+            )}
+            <AiEditor
+              kind={kind}
+              id={item.id}
+              draft={draft}
+              setDraft={setDraft}
+              onChange={bodyChange}
+            />
           </div>
-        )}
-        {kind === 'prompt' && (
-          <PromptActions
-            id={item.id}
-            body={draft.body}
-            count={'useCount' in item ? item.useCount : 0}
-            beforeUse={flush}
-          />
-        )}
-        {kind === 'prompt' && (
-          <PromptVersions
-            id={item.id}
-            draft={draft}
-            before={flush}
-            apply={(p) => {
-              const binding = useAiStore.getState().editor;
-              if (binding?.id === item.id)
-                binding.handle()?.replaceRange(0, draft.body.length, p.body);
-              setDraft(fromEntry(p, 'prompt'));
-            }}
-          />
-        )}
-        <AiEditor
-          kind={kind}
-          id={item.id}
-          draft={draft}
-          setDraft={setDraft}
-          onChange={bodyChange}
-        />
+          <aside
+            className="detail-inspector"
+            aria-label={t('common.properties')}
+          >
+            <h2>{t('common.properties')}</h2>
+            {kind === 'todo' && 'status' in item && (
+              <Button
+                variant="outline"
+                onClick={() => run(() => appApi.toggleTodo(item.id))}
+              >
+                <Check data-icon="inline-start" />
+                {t(item.status === 'done' ? 'todo.reopen' : 'todo.complete')}
+              </Button>
+            )}
+            <DetailFields
+              kind={kind}
+              draft={draft}
+              update={update}
+              onUrlBlur={() => {
+                if (kind === 'skill' && !draft.title.trim() && draft.url)
+                  void appApi
+                    .linkTitle(draft.url)
+                    .then((title) => {
+                      if (title)
+                        setDraft((d) => ({ ...d, title: d.title || title }));
+                    })
+                    .catch(() => {});
+              }}
+            />
+            <Field className="tags-field">
+              <FieldLabel htmlFor="entry-tags">{t('common.tags')}</FieldLabel>
+              <TagInput
+                id="entry-tags"
+                value={draft.tags}
+                onChange={(tags) => update('tags', tags)}
+              />
+            </Field>
+            {kind === 'skill' && (
+              <SkillActions
+                id={item.id}
+                draft={draft}
+                setDraft={setDraft}
+                flush={flush}
+              />
+            )}
+            {kind === 'todo' && 'parentId' in item && !item.parentId && (
+              <Subtasks id={item.id} />
+            )}
+            {kind === 'idea' && (
+              <div className="convert-actions">
+                {(['todo', 'tip', 'prompt'] as const).map((target) => (
+                  <Button
+                    key={target}
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      run(async () => {
+                        const ref = await appApi.convert(item.id, target);
+                        void navigate(`/${routes[ref.entityType]}/${ref.id}`);
+                      })
+                    }
+                  >
+                    {t(
+                      `idea.${target === 'todo' ? 'toTodo' : target === 'tip' ? 'toTip' : 'toPrompt'}`,
+                    )}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {kind === 'prompt' && (
+              <PromptActions
+                id={item.id}
+                body={draft.body}
+                count={'useCount' in item ? item.useCount : 0}
+                beforeUse={flush}
+              />
+            )}
+            {kind === 'prompt' && (
+              <PromptVersions
+                id={item.id}
+                draft={draft}
+                before={flush}
+                apply={(p) => {
+                  const binding = useAiStore.getState().editor;
+                  if (binding?.id === item.id)
+                    binding
+                      .handle()
+                      ?.replaceRange(0, draft.body.length, p.body);
+                  setDraft(fromEntry(p, 'prompt'));
+                }}
+              />
+            )}
+          </aside>
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import type { EntityType } from '@/types/bindings/EntityType';
 import { t } from '@/i18n';
 import { appApi } from '@/lib/api/app';
 import { useQuery } from '@tanstack/react-query';
-const tools = ['Claude Code', 'Cursor', 'ChatGPT', 'Codex'];
+import { presetTools } from '@/lib/tools';
 export function DetailFields({
   kind,
   draft: d,
@@ -28,22 +28,6 @@ export function DetailFields({
   });
   return (
     <FieldGroup className="detail-fields">
-      {kind !== 'idea' && (
-        <Field>
-          <FieldLabel htmlFor="entry-title">
-            {t(kind === 'skill' ? 'skill.name' : 'common.title')}
-          </FieldLabel>
-          <Input
-            id="entry-title"
-            className="title-input"
-            value={d.title}
-            maxLength={kind === 'todo' ? 500 : undefined}
-            required={kind === 'todo'}
-            aria-invalid={kind === 'todo' && !d.title.trim()}
-            onChange={(e) => update('title', e.target.value)}
-          />
-        </Field>
-      )}
       {kind === 'idea' && (
         <Field>
           <FieldLabel htmlFor="entry-date">{t('common.date')}</FieldLabel>
@@ -100,7 +84,7 @@ export function DetailFields({
           <div className="tool-options">
             {[
               ...new Set([
-                ...tools,
+                ...presetTools,
                 ...(settings.data?.tipsCustomTools ?? []),
                 ...d.tools,
               ]),

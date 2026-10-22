@@ -14,8 +14,9 @@ fn database() -> Connection {
 
 #[test]
 fn migration_is_atomic_and_repeated_start_is_safe() {
-    let mut conn = database();
-    db::migrate::run(&mut conn).unwrap();
+    let mut conn = Connection::open_in_memory().unwrap();
+    db::migrate::legacy_v2(&mut conn).unwrap();
+    db::migrate::legacy_v2(&mut conn).unwrap();
     let version: i32 = conn
         .pragma_query_value(None, "user_version", |r| r.get(0))
         .unwrap();

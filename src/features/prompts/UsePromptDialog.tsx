@@ -20,10 +20,12 @@ export function UsePromptDialog({
   id,
   body,
   onClose,
+  onSend,
 }: {
-  id: string;
+  id?: string;
   body: string;
   onClose: () => void;
+  onSend?: (text: string) => void;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const aiBusy = useAiStore((s) => s.status === 'streaming');
@@ -31,7 +33,7 @@ export function UsePromptDialog({
   const result = renderTemplate(body, values);
   const copy = useAction(async () => {
     await desktop.copy(result);
-    await appApi.usePrompt(id);
+    if (id) await appApi.usePrompt(id);
     toast.success(t('common.copied'));
     onClose();
   });
@@ -79,10 +81,12 @@ export function UsePromptDialog({
             variant="outline"
             disabled={aiBusy}
             onClick={() => {
-              sendChat(result);
-              void appApi
-                .usePrompt(id)
-                .catch((e: Error) => toast.error(e.message));
+              if (onSend) onSend(result);
+              else sendChat(result);
+              if (id)
+                void appApi
+                  .usePrompt(id)
+                  .catch((e: Error) => toast.error(e.message));
               onClose();
             }}
           >

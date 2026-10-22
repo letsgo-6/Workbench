@@ -3,4 +3,4 @@
 /**
  * Content domain; table names always come from this closed enum.
  */
-export type EntityType = "idea" | "todo" | "tip" | "skill" | "prompt";
+export type EntityType = "idea" | "todo" | "tip" | "skill" | "prompt" | "material";

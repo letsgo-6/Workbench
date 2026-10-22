@@ -1,5 +1,55 @@
 # Workbench 个人 AI 工作台 —— 代码架构与分批实施方案
 
+## 0.5.0 六类目标整理与单轮过程（2026-10-22）
+
+基于框架 `0023780` 按 Phase 1/2/3 实施；渲染器、背景、依赖与 schema 不变，仍为 commands → services → repo。
+
+- 首页输入框目标顺序：idea/todo/skill/prompt/tip/material；有可用模型时 Enter 定向整理，Tab 循环目标，Ctrl+Enter 直接存灵感。无模型只提供灵感/待办手动保存。输入前缀可同步目标，提交时 target > prefix > model；Rust 仍剥离前缀，并独立保存 target/forced，使显式目标支持最多十条同类结果，旧前缀接口保留单条。
+- `capture_analyze_stream(input, onEvent)` 使用请求窗口 Channel 传递阶段、正文 delta、可选 reasoning。只有该流式路径启用 AiService::run_with_reasoning；普通动作/旧 capture_analyze 丢弃推理。两个文本流分别跨增量脱敏，共用输出大小限制，服务层不依赖 Tauri。
+- 提示规则追加到用户模板消息之后，模板编辑继续有效。归一化继续以原文范围恢复正文/链接/日期；明确目标只决定类型，低置信度字段仍需确认。Skill/素材空标题链接先预览，由现有 link_fetch_title 补标题，不在自动保存路径联网。
+- `useCaptureProcess` 只保存当前一轮内存状态；步骤有相对耗时，推理和原始 JSON 折叠展示，部分 JSON 仅展示 type/title。结束关闭确认后清空，运行收起不取消；输入取消/离开首页才取消请求。runId 保护所有增量和保存/撤销回写，不将过程发入对话、备份或日志。
+- `capture.defaultTarget`（EntityType，默认 idea）替代 capture.smartDefault，继续用 setting 表；旧键不读不导出，导入旧备份时忽略。用户手动选择与前缀同步高于默认设置；无模型只映射到可手动目标。
+
+验收与真实服务商边界见 PROGRESS；决定见 DECISIONS。下方为历史架构截面。
+
+## 0.4.1 视觉迭代（2026-10-22）
+
+渲染协议、命令和分层不变。主渲染器使用四层原创程序表面缓存与环境粒子；静态SVG一次性嵌入相同生成表面，在Canvas不可用时退回纯SVG轮廓。motion根状态覆盖Portal与实验室；off无持续绘制。移除外围选择圈，键盘焦点在HTML标签；inactive页面不泄露首页标签。具体实现与证据以PROGRESS和DESIGN当前记录为准。下方0.4.0为导航功能基线。
+
+## 0.4.0 批次 B 已实施扩展（2026-10-21）
+
+基线为 0.3.0 `24a46ef`，当前首页与导航以本节和 PLAN-v0.3 §9–15 为准；下方 A/原架构是历史截面。未新增依赖或迁移，0001/0002/0003 均保持原样。
+
+- AppShell 常驻挂载（按代码块延迟加载）HomeStage，非首页隐藏、inert 并暂停渲染；子路由使用 64px ModuleHeader、小地图与搜索/回收站/设置入口。Sidebar 与其折叠状态已删除。原列表/详情与素材库布局保留，AI 悬浮按钮/抽屉沿用原实现。
+- `features/home/scene/types.ts` 是唯一渲染协议；controller 管理 forming/dormant/growing/awake、出生信号、daily/always/never、逐枝 ambient 与逾期 pulse。HTML NodeOverlay/NodePeek 管理命中、标签、数量、260/140ms 预览、键盘焦点与路由，不访问 Canvas 内部。全局数字/Esc 优先级在 lib/keymap.ts；导航统一 flush 自动保存、预加载、镜头与过场，过场期间的新导航意图保留最后一次。
+- mountRenderer 在 HTML 提交后的 RAF 才初始化，异步加载原创 Canvas 2D 主渲染器；off 或加载/mount 失败使用静态 SVG。主渲染器只绘制、计时与发 RendererSignal，DPR≤2，10秒无交互降为30fps，页面/原生窗口不可见时取消RAF。原生关闭到托盘与 show_main 发出 main-window-visibility，前端查询窗口真实状态，弥补 WebView2 隐藏时 document.hidden 仍为 false 的差异。场景颜色由 readSceneTheme 读取既有五种语义变量，并观察主题切换。
+- useSmartCapture/CapturePreview/CaptureFallback 路径移到 `features/capture`；HomeComposer（导出仍名 QuickInput，保留旧测试入口）复用业务逻辑。Zustand 保存本次运行所选的可用 Key 配置，providerId 仅随分析请求发送，不修改默认服务商。bus.ts 发布类型化生命周期事件，HomeEvents 处理光粒、thinking、光球/反向/落入、通知去重与离开期间的新建反馈。聚合数量在相关光球全部到达后刷新；关闭动效则立即更新。
+- `home_overview` 替代并删除 `dashboard_get` 与 Dashboard DTO。命令读取本地日期边界，repo/home 聚合六类数量、逾期数、近七天新增与三条最新内容；不装载素材文件或每个条目的标签。前端使用 `['home']` 查询与 data-changed 协调失效。每日小结入口迁到灵感池工具栏和命令面板。
+- `#/__lab/neuron` 仅 DEV 注册，独立舞台用同一渲染器接口测试阶段、节点状态、事件、主题、强度与主/静态切换，`scene-metrics` 是只读的帧率诊断 DOM 事件。生产构建没有实验室路由或页面模块；参考媒体不进入 dist。
+
+| IPC | 输入 | 返回/职责 |
+| --- | --- | --- |
+| home_overview | 无 | HomeOverview：today、六个 HomeNode，每个含 count/overdue/recent7/latest |
+| settings_set | key=`home.intro`，value=daily/always/never | 使用既有 setting 表，默认 daily，不新增迁移 |
+| capture_analyze | 既有 providerId 字段 | 使用本次运行选择的可用配置，Rust 原文/链接/日期规则不变 |
+
+`wb.home.introDate` 是本机 localStorage 界面状态，只在 awake 后写入，不进数据库和备份；重播清除该值。appearance.motion 保持 system/full/lite/off，系统减少动画映射到 lite，素材库与首页共享设置。
+
+## 0.3.0 批次 A 已实施扩展（2026-10-21）
+
+本节记录在 `d30fa9b` 上按 `PLAN-v0.3.md` 实施的增量；下方保留原架构基线。神经元首页、导航替换等批次 B 内容尚未实施，今日页与侧栏继续使用。
+
+- 唯一新迁移 `0003_materials.sql`：material、material_asset，以及支持六类实体的 entity_tag。EntityType::Material 统一参与通用星标、标签、搜索、回收站、批量操作、命令面板、AI @ 引用和上下文。FTS 内容含标题、备注、提示词、链接、原文件名；AI 上下文仅文本。
+- 分层保持 commands → services → repo。commands/materials.rs 提供素材 CRUD、原生文件路径导入、raw bytes 剪贴板导入、缩略图 raw IPC、排序/封面/删除和存储统计；services/assets.rs 负责文件校验、流式落盘、失败回收、30 天保留、七天孤立文件维护与目录复制；repo/materials.rs 只做 SQL，列表批量装载标签及文件，避免逐条查询。services/capture 不引用 Tauri。
+- 原件为 assets/YYYY/MM/<UUID>.<ext>，派生 WebP 为 assets/thumbs/<UUID>.webp。DTO 内相对路径在命令边界经过 owned_path 校验、恢复保留文件后转为绝对路径，WebView 经限定到当前 assets 目录的 asset protocol 读取。所有可写路径拒绝符号链接/Windows reparse point；不接受 SVG。
+- 文件复制先写临时同目录文件，流式限量/计算 SHA-256，sync 后改名，然后一次事务写记录。文件操作锁协调完整备份、文件删除、恢复读取和数据目录切换。目录切换复制完整 assets（含保留区），逐文件校验，数据库快照就绪后才切换 bootstrap。
+- JSON 仍为 formatVersion=1，新增 schemaVersion=3 与 materials/materialAssets 两个数据集合；旧 schema=1/2 自动补空素材集合。完整包 `.wbbackup` 为 ZIP：manifest(formatVersion=2/schemaVersion=3)、data.json、全部被引用原件与缩略图，含独立文件 SHA 映射；不含 `_purged/`。ZIP 预检与流式解包均有路径、数量、体积及压缩比限制，文件就绪后才应用数据事务。每日七份数据库快照不复制 assets；恢复时优先找回保留文件。
+- 前端 `/materials/:id?`，tab=works/components；作品瀑布流每页 60 项，组件网格，详情沿用 useAutosave。文件导入使用 WebView 原生路径事件；粘贴图片使用二进制 IPC；缩略图在 WebView canvas 生成，失败保留原件并显示回退。Windows 缩略图排序额外提供指针手柄以兼容 Tauri 原生拖入处理。
+- `appearance.motion` 枚举 system/full/lite/off，system 跟随 prefers-reduced-motion。共享播放池限制同时播放最多四个视频（含详情手动播放的名额），视口阈值 0.6；lite 仅悬停播放视频，off 显示 GIF 静帧且不自动播放视频。没有加入批次 B 的 home.intro 设置或渲染器。
+- 组件提示词复用变量表单；复制写系统剪贴板，发送仅填入 Zustand 的 AI composerText，不启动请求。CaptureItem 添加 materialKind/materialPrompt，正文与链接仍按原文核验；默认模板按历史 SHA 有条件升级。Rust DTO 继续由 ts-rs 生成并提交。
+
+完整差异与兼容测试入口见 DECISIONS，验收与真实环境边界见 PROGRESS。
+
 | 项目 | 内容 |
 | --- | --- |
 | 文档版本 | v1.0 |
@@ -592,6 +642,14 @@ pub struct Origin { pub entity_type: EntityType, pub id: String }
 
 **批次 3**：见第 11.3 节。
 
+**智能整理（v0.2.1）**：详细约定见 [ADDENDUM-smart-capture.md](ADDENDUM-smart-capture.md)。
+
+| 命令 | 输入 → 输出 |
+| --- | --- |
+| `capture_analyze` | `{ requestId, providerId?, text }` → `CapturePreview`；只分析，不写库 |
+| `capture_commit` | `{ items: CaptureItem[] }` → `{ refs, createdAt }`；一次事务保存五类条目 |
+| `capture_undo` | `{ refs, createdAt }` → `{ removed, skipped }`；彻底删除未编辑的本批条目 |
+
 ### 6.9 内置 AI 模板与模板语法
 
 - 变量语法 `{{name}}`：正则 `\{\{\s*([^{}\n]+?)\s*\}\}`，变量名去除首尾空白，按首次出现顺序去重；支持中文变量名；未填写的变量渲染时保留原样（前端提示）。
@@ -649,6 +707,7 @@ pub enum AiStreamEvent {
 | `skill_describe` | 生成 Skill 简介与标签 | Skill 内容 | `json`：`{ description, tags[] }` | Skill 详情 | 2 |
 | `breakdown_todos` | 拆解待办 | 一段描述 | `json`：`[{ title, note?, dueDate?, priority? }]` | 待办页 | 3 |
 | `daily_summary` | 每日小结 | 当天灵感 + 待办完成情况 | `markdown` | 今日页 | 3 |
+| `smart_capture` | 智能整理 | 今日页输入原文 | `CapturePreview`（由 capture 服务校验） | 今日页快速输入，不进入 AI 菜单 | 0.2.1 |
 
 - `context.rs`：多条目拼装为 `### 条目 N（类型 · 日期）\n内容\n\n`；总长度上限默认 24,000 字符，超限按比例截断各条目并在末尾注明"（部分内容已截断）"，前端同时提示。
 - `parse.rs`：JSON 输出容错提取——去除 ```` ```json ```` 围栏、截取首个 `{…}`/`[…]` 后再解析；失败时前端展示原文并提供"重新生成"。
@@ -758,7 +817,7 @@ export const ideasApi = {
 
 | 模块 | 要点 |
 | --- | --- |
-| 今日 | 顶部日期 + 快速输入框：默认存为灵感，`Tab` 切换灵感/待办（`preventDefault`），`Enter` 保存；从这里创建的待办 `dueDate = 今天`。今日待办 = 未完成且 `dueDate ≤ 今天` + 今天完成的；`dueDate < 今天` 的显示"顺延 · 原定 MM-DD"标记。今日灵感按时间倒序。最近 7 天新增技巧/Skill/提示词各 3 条 |
+| 今日 | 顶部日期 + 快速输入框：默认存为灵感，`Tab` 切换灵感/待办（`preventDefault`），`Enter` 保存；从这里创建的待办 `dueDate = 今天`。今日待办 = 未完成且 `dueDate ≤ 今天` + 今天完成的；`dueDate < 今天` 的显示"顺延 · 原定 MM-DD"标记。今日灵感按时间倒序。最近 7 天新增技巧/Skill/提示词各 3 条。v0.2.1 有可用模型时的智能整理见 [ADDENDUM-smart-capture.md](ADDENDUM-smart-capture.md)，无模型保留原行为 |
 | 灵感 | 按 `date` 分组（"今天/昨天/MM-DD 星期X"），星标条目在顶部单独分组；右键菜单：星标、转为待办/技巧/提示词、删除；详情显示"来源"与"已转化为"链接 |
 | 待办 | 视图切换 today / next7 / all / done；字段：标题、备注（Markdown）、截止日期、优先级、标签；勾选完成带过渡动画；优先级用颜色标识 |
 | Agent 技巧 | 工具多选：预设 Claude Code / Cursor / ChatGPT / Codex + 自定义（存设置 `tips.customTools`）；按工具分组（一条技巧可出现在多个分组）/ 按标签筛选；列表与卡片视图切换 |
@@ -810,6 +869,8 @@ export const ideasApi = {
 | `editor.fontSize` | `14` | 3 |
 | `backup.autoEnabled` / `backup.keep` | `true` / `7` | 3 |
 | `todo.defaultRemindTime` | `"09:00"` | 3 |
+| `capture.smartDefault` | `true`（布尔） | 0.2.1 |
+| `capture.autoSave` | `false`（布尔） | 0.2.1 |
 
 后端提供 `Settings` 强类型结构（含默认值），未知 key 拒绝写入。
 

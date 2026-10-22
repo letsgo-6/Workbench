@@ -25,6 +25,7 @@ pub enum ErrorCode {
     AiRateLimit,
     AiProvider,
     AiBadResponse,
+    Cancelled,
 }
 
 /// Serializable IPC failure.

@@ -6,13 +6,22 @@ import { todosApi } from './todos';
 import { tipsApi } from './tips';
 import { skillsApi } from './skills';
 import { promptsApi } from './prompts';
-export const kinds: EntityType[] = ['idea', 'todo', 'tip', 'skill', 'prompt'];
+import { materialsApi } from './materials';
+export const kinds: EntityType[] = [
+  'idea',
+  'todo',
+  'tip',
+  'skill',
+  'prompt',
+  'material',
+];
 export const routes: Record<EntityType, string> = {
   idea: 'ideas',
   todo: 'todos',
   tip: 'tips',
   skill: 'skills',
   prompt: 'prompts',
+  material: 'materials',
 };
 const apis = {
   idea: ideasApi,
@@ -20,6 +29,7 @@ const apis = {
   tip: tipsApi,
   skill: skillsApi,
   prompt: promptsApi,
+  material: materialsApi,
 };
 export function contentApi(
   kind: EntityType,
@@ -34,6 +44,7 @@ export function titleOf(item: Entry): string {
       : (item.contentMd.split('\n')[0]?.replace(/^#+\s*/, '') ?? '');
 }
 export function bodyOf(item: Entry): string {
+  if ('assets' in item) return `${item.noteMd}\n${item.prompt}`.trim();
   return 'body' in item
     ? item.body
     : 'noteMd' in item

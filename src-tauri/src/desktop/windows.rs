@@ -6,6 +6,7 @@ pub fn show_main(app: &tauri::AppHandle) -> AppResult<()> {
     w.show()
         .map_err(|_| AppError::Invalid("Cannot show main window".into()))?;
     let _ = w.unminimize();
+    let _ = w.emit("main-window-visibility", true);
     w.set_focus()
         .map_err(|_| AppError::Invalid("Cannot focus main window".into()))
 }

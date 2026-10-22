@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Star, Upload, Trash2 } from 'lucide-react';
+import { Plus, Star, Upload, Trash2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -8,6 +8,7 @@ import { appApi } from '@/lib/api/app';
 import { t } from '@/i18n';
 import { AiMenu } from '../ai/AiMenu';
 import { useUi } from '@/stores/ui';
+import { presetTools } from '@/lib/tools';
 export interface ContentFilters {
   q: string;
   tag: string;
@@ -66,13 +67,26 @@ export function ContentHeader({
           <Plus />
         </Button>
       </div>
-      <Input
-        id="list-filter"
-        placeholder={t('common.filter')}
-        aria-label={t('common.filter')}
-        value={f.q}
-        onChange={(e) => setFilter('q', e.target.value)}
-      />
+      <div className="content-search">
+        <Search aria-hidden="true" />
+        <Input
+          id="list-filter"
+          placeholder={t('common.filter')}
+          aria-label={t('common.filter')}
+          value={f.q}
+          onChange={(e) => setFilter('q', e.target.value)}
+        />
+        {f.q && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t('common.clearSearch')}
+            onClick={() => setFilter('q', '')}
+          >
+            <X />
+          </Button>
+        )}
+      </div>
       <div className="filter-row">
         <select
           aria-label={t('common.tags')}
@@ -99,17 +113,21 @@ export function ContentHeader({
         </Button>
       </div>
       {kind === 'todo' && (
-        <select
+        <ToggleGroup
+          type="single"
+          className="todo-views"
           aria-label={t('nav.todo')}
           value={view}
-          onChange={(e) => onView(e.target.value)}
+          onValueChange={(value) => {
+            if (value) onView(value);
+          }}
         >
           {(['today', 'next7', 'all', 'done'] as const).map((view) => (
-            <option key={view} value={view}>
+            <ToggleGroupItem key={view} value={view} size="sm">
               {t(`todo.${view}`)}
-            </option>
+            </ToggleGroupItem>
           ))}
-        </select>
+        </ToggleGroup>
       )}
       {kind === 'tip' && (
         <>
@@ -123,10 +141,7 @@ export function ContentHeader({
             </option>
             {[
               ...new Set([
-                'Claude Code',
-                'Cursor',
-                'ChatGPT',
-                'Codex',
+                ...presetTools,
                 ...(settings.data?.tipsCustomTools ?? []),
                 ...tools,
               ]),

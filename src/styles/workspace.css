@@ -1,0 +1,305 @@
+/* Reference-informed work surfaces; home geometry and composer are deliberately outside this scope. */
+.three-pane .list-pane {
+  background: color-mix(in srgb, var(--card) 80%, var(--background));
+}
+.three-pane .list-header {
+  padding: 24px 20px 16px;
+  gap: 12px;
+}
+.three-pane .list-heading {
+  margin-bottom: 4px;
+}
+.three-pane .list-heading h1 {
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+.three-pane .list-heading .muted {
+  font-size: 12px;
+}
+.content-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+}
+.content-search:focus-within {
+  border-color: var(--primary);
+}
+.content-search > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.content-search input {
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.content-search input:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+.three-pane .todo-views {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 3px;
+  background: var(--muted);
+  border-radius: 8px;
+}
+.three-pane .todo-views button {
+  padding-inline: 4px;
+  font-size: 12px;
+}
+.three-pane .content-row {
+  margin-inline: 12px;
+  border-bottom-color: color-mix(in srgb, var(--border) 65%, transparent);
+}
+.three-pane .content-row.active {
+  border-radius: 10px;
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--primary) 40%, transparent);
+}
+.three-pane .content-row.selected:not(.active) {
+  background: var(--accent);
+}
+.three-pane .row-select {
+  padding: 18px 14px;
+  gap: 8px;
+}
+.three-pane .row-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.three-pane .row-snippet {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.three-pane .row-meta {
+  font-size: 11px;
+}
+.three-pane .detail-pane {
+  container: detail / inline-size;
+}
+.entry-detail .detail-top {
+  padding: 16px 24px;
+  min-height: 68px;
+}
+.entry-detail .save-status {
+  font-size: 12px;
+}
+.entry-detail .detail-scroll {
+  padding: 0;
+}
+.detail-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  min-height: 100%;
+}
+.detail-writing {
+  min-width: 0;
+  padding: 32px 28px 56px;
+}
+.detail-writing .entry-heading {
+  gap: 8px;
+}
+.detail-writing .title-input {
+  height: auto;
+  min-height: 44px;
+  padding: 8px 0;
+  font-size: 24px;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+  background: transparent;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+.detail-writing .title-input:focus-visible {
+  border-color: var(--primary);
+  outline: 1px solid var(--primary);
+  outline-offset: 4px;
+}
+.detail-writing .entry-heading > label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.detail-writing .editor-pane {
+  margin-top: 24px;
+  border: 0;
+}
+.detail-writing .editor-toolbar {
+  padding-top: 0;
+  padding-bottom: 16px;
+}
+.detail-writing .editor-body {
+  min-height: 320px;
+}
+.detail-inspector {
+  min-width: 0;
+  padding: 32px 20px 40px;
+  border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 65%, var(--background));
+  overflow-wrap: anywhere;
+}
+.detail-inspector > h2 {
+  margin: 0 0 24px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.detail-inspector .detail-fields {
+  gap: 24px;
+}
+.detail-inspector .field-row {
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+.detail-inspector .tool-options {
+  gap: 10px 12px;
+}
+.detail-inspector .tool-options label,
+.detail-inspector [data-slot='field-label'] {
+  font-size: 12px;
+}
+.detail-inspector .tags-field {
+  margin-top: 24px;
+}
+.detail-inspector .tag-input input,
+.detail-inspector select,
+.detail-inspector textarea {
+  min-width: 0;
+  width: 100%;
+}
+.detail-inspector .convert-actions,
+.detail-inspector .skill-actions {
+  gap: 8px;
+}
+.filtered-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 12px;
+  gap: 16px;
+}
+.filtered-empty > [data-slot='empty'] {
+  flex: 0;
+  padding: 16px;
+}
+@container detail (max-width: 760px) {
+  .detail-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .detail-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding-inline: 28px;
+  }
+  .detail-writing .editor-body.split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.settings-page .settings-workspace {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.settings-page .settings-nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.settings-page .settings-nav a {
+  padding: 12px 16px;
+  font-size: 13px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  transition:
+    background-color 180ms,
+    color 180ms;
+}
+.settings-page .settings-nav a:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.settings-page .settings-nav a[aria-current='page'] {
+  background: var(--selected);
+  color: var(--foreground);
+}
+.settings-content {
+  min-width: 0;
+}
+.settings-page .settings-content > section {
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.settings-content h2 {
+  letter-spacing: -0.02em;
+}
+.settings-page .settings-content > section > [data-slot='field'] {
+  margin-block: 24px;
+  gap: 10px;
+}
+.detail-inspector > [data-slot='button'] {
+  margin-bottom: 20px;
+}
+.material-page .material-page-header {
+  padding: 24px 28px 20px;
+}
+.material-page .material-toolbar {
+  padding-inline: 28px;
+}
+.material-page .material-drop-hint {
+  padding: 10px 12px;
+  margin-bottom: 20px;
+  border-style: solid;
+  border-color: transparent;
+  justify-content: flex-start;
+  text-align: left;
+  background: var(--card);
+  font-size: 12px;
+}
+.material-page .material-drop-hint svg {
+  width: 16px;
+  height: 16px;
+}
+.material-page .material-card.active {
+  border-color: var(--primary);
+}
+.material-page .material-card.active .material-card-title > button:first-child {
+  color: var(--primary);
+}
+.material-page .material-card.selected {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+@media (max-width: 1000px) {
+  .settings-page .settings-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .settings-page .settings-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .settings-page .settings-nav a {
+    padding: 8px 12px;
+  }
+}

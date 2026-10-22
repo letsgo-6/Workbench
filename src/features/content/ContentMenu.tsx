@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { appApi } from '@/lib/api/app';
 import { contentApi, routes, type Entry } from '@/lib/api/content';
@@ -19,6 +20,17 @@ export function ContentMenu({
   remove: (id: string) => Promise<void>;
 }) {
   const navigate = useNavigate();
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [onClose]);
   const choose = (action: () => Promise<unknown>) => {
     run(action);
     onClose();

@@ -150,3 +150,96 @@ fn credential_split_across_deltas() {
     assert_eq!(r.push("text sec", false), "text ");
     assert_eq!(r.push("ret-key end", false), "[REDACTED] end");
 }
+#[tokio::test]
+async fn reasoning_is_opt_in_redacted_independently_and_never_becomes_content() {
+    let server = MockServer::start().await;
+    let key = "secret-key";
+    let wire = [
+        serde_json::json!({"reasoning_content":"推理 sec"}),
+        serde_json::json!({"content":"正文 sec"}),
+        serde_json::json!({"reasoning_content":"ret-key 完毕"}),
+        serde_json::json!({"content":"ret-key 完成"}),
+    ]
+    .into_iter()
+    .map(|delta| {
+        format!(
+            "data: {}\n\n",
+            serde_json::json!({"choices":[{"delta":delta}]})
+        )
+    })
+    .collect::<String>()
+        + "data: [DONE]\n\n";
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(wire))
+        .mount(&server)
+        .await;
+    let service = AiService::new(&NetworkProxy {
+        mode: "none".into(),
+        url: None,
+    })
+    .unwrap();
+    for enabled in [false, true] {
+        let events = Mutex::new(vec![]);
+        let sink = |event| {
+            events.lock().push(event);
+            true
+        };
+        if enabled {
+            service
+                .run_with_reasoning(
+                    "reasoning",
+                    provider(server.uri()),
+                    key.into(),
+                    messages(),
+                    false,
+                    sink,
+                )
+                .await
+                .unwrap();
+        } else {
+            service
+                .run(
+                    "ordinary",
+                    provider(server.uri()),
+                    key.into(),
+                    messages(),
+                    false,
+                    sink,
+                )
+                .await
+                .unwrap();
+        }
+        let events = events.lock();
+        let reasoning = events
+            .iter()
+            .filter_map(|e| {
+                if let AiStreamEvent::Reasoning { text } = e {
+                    Some(text.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect::<String>();
+        let content = events
+            .iter()
+            .filter_map(|e| {
+                if let AiStreamEvent::Delta { text } = e {
+                    Some(text.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect::<String>();
+        assert_eq!(content, "正文 [REDACTED] 完成");
+        assert_eq!(
+            reasoning,
+            if enabled {
+                "推理 [REDACTED] 完毕"
+            } else {
+                ""
+            }
+        );
+        assert!(!serde_json::to_string(&*events).unwrap().contains(key));
+        assert!(service.requests.lock().is_empty());
+    }
+}

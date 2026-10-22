@@ -7,14 +7,16 @@ import type { Todo } from '@/types/bindings/Todo';
 import type { Tip } from '@/types/bindings/Tip';
 import type { Skill } from '@/types/bindings/Skill';
 import type { Prompt } from '@/types/bindings/Prompt';
+import type { Material } from '@/types/bindings/Material';
+import type { MaterialInput } from '@/types/bindings/MaterialInput';
 import type { IdeaInput } from '@/types/bindings/IdeaInput';
 import type { TodoInput } from '@/types/bindings/TodoInput';
 import type { TipInput } from '@/types/bindings/TipInput';
 import type { SkillInput } from '@/types/bindings/SkillInput';
 import type { PromptInput } from '@/types/bindings/PromptInput';
-export type Entry = Idea | Todo | Tip | Skill | Prompt;
+export type Entry = Idea | Todo | Tip | Skill | Prompt | Material;
 export type EntryInput =
-  IdeaInput | TodoInput | TipInput | SkillInput | PromptInput;
+  IdeaInput | TodoInput | TipInput | SkillInput | PromptInput | MaterialInput;
 export function createContentApi<T extends Entry>(kind: EntityType) {
   return {
     list: (input: Partial<ListQuery>) =>

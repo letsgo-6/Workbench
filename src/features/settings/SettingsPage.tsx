@@ -6,6 +6,9 @@ import { TemplateSettings } from './TemplateSettings';
 import { DataSettings } from './DataSettings';
 import { BackupSettings } from './BackupSettings';
 import { EditorSettings, ReminderSettings } from './V02Settings';
+import { CaptureSettings } from './CaptureSettings';
+import { HomeSettings } from './HomeSettings';
+import { MotionSettings } from './MotionSettings';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,99 +76,106 @@ export function SettingsPage() {
       <header className="page-header">
         <h1>{t('nav.settings')}</h1>
       </header>
-      <nav className="settings-nav" aria-label={t('nav.settings')}>
-        {(
-          [
-            { key: 'appearance', label: t('settings.appearance') },
-            { key: 'models', label: t('model.title') },
-            { key: 'templates', label: t('desktop.templates') },
-            { key: 'shortcuts', label: t('desktop.shortcuts') },
-            { key: 'data', label: t('data.title') },
-            { key: 'general', label: t('desktop.general') },
-          ] as const
-        ).map((item) => (
-          <Link
-            key={item.key}
-            aria-current={section === item.key ? 'page' : undefined}
-            to={`/settings/${item.key}`}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      {query.isPending ? (
-        <Loading />
-      ) : query.error ? (
-        <Failure error={query.error} retry={() => void query.refetch()} />
-      ) : (
-        <>
-          {section === 'models' ? (
-            <ModelSettings />
-          ) : section === 'templates' ? (
-            <TemplateSettings />
-          ) : section === 'shortcuts' ? (
-            <ShortcutSettings settings={query.data} />
-          ) : section === 'data' ? (
-            <>
-              <DataSettings />
-              <BackupSettings />
-            </>
-          ) : section === 'general' ? (
-            <>
-              <GeneralSettings settings={query.data} />
-              <ReminderSettings />
-            </>
+      <div className="settings-workspace">
+        <nav className="settings-nav" aria-label={t('nav.settings')}>
+          {(
+            [
+              { key: 'appearance', label: t('settings.appearance') },
+              { key: 'models', label: t('model.title') },
+              { key: 'templates', label: t('desktop.templates') },
+              { key: 'shortcuts', label: t('desktop.shortcuts') },
+              { key: 'data', label: t('data.title') },
+              { key: 'general', label: t('desktop.general') },
+            ] as const
+          ).map((item) => (
+            <Link
+              key={item.key}
+              aria-current={section === item.key ? 'page' : undefined}
+              to={`/settings/${item.key}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="settings-content">
+          {query.isPending ? (
+            <Loading />
+          ) : query.error ? (
+            <Failure error={query.error} retry={() => void query.refetch()} />
           ) : (
             <>
-              <section>
-                <h2>{t('settings.appearance')}</h2>
-                <Field>
-                  <FieldLabel>{t('settings.theme')}</FieldLabel>
-                  <ToggleGroup
-                    type="single"
-                    value={query.data?.appearanceTheme}
-                    onValueChange={(value) => {
-                      if (value) theme.mutate(value);
-                    }}
-                  >
-                    {(['light', 'dark', 'system'] as const).map((value) => (
-                      <ToggleGroupItem key={value} value={value}>
-                        {t(`settings.${value}`)}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                </Field>
-                <EditorSettings />
-              </section>
-              <section>
-                <h2>{t('settings.tags')}</h2>
-                {tags.error ? (
-                  <Failure
-                    error={tags.error}
-                    retry={() => void tags.refetch()}
-                  />
-                ) : tags.data?.length ? (
-                  tags.data.map((tag) => (
-                    <TagRow key={`${tag.id}-${tag.name}`} tag={tag} />
-                  ))
-                ) : (
-                  <p className="muted">{t('settings.noTags')}</p>
-                )}
-              </section>
-              <section>
-                <h2>{t('settings.about')}</h2>
-                <p className="muted">{t('settings.localHint')}</p>
-                <dl className="about">
-                  <dt>{t('settings.version')}</dt>
-                  <dd>{info.data?.version}</dd>
-                  <dt>{t('settings.path')}</dt>
-                  <dd>{info.data?.dataDir}</dd>
-                </dl>
-              </section>
+              {section === 'models' ? (
+                <ModelSettings />
+              ) : section === 'templates' ? (
+                <TemplateSettings />
+              ) : section === 'shortcuts' ? (
+                <ShortcutSettings settings={query.data} />
+              ) : section === 'data' ? (
+                <>
+                  <DataSettings />
+                  <BackupSettings />
+                </>
+              ) : section === 'general' ? (
+                <>
+                  <GeneralSettings settings={query.data} />
+                  <ReminderSettings />
+                  <CaptureSettings settings={query.data} />
+                </>
+              ) : (
+                <>
+                  <section>
+                    <h2>{t('settings.appearance')}</h2>
+                    <Field>
+                      <FieldLabel>{t('settings.theme')}</FieldLabel>
+                      <ToggleGroup
+                        type="single"
+                        value={query.data?.appearanceTheme}
+                        onValueChange={(value) => {
+                          if (value) theme.mutate(value);
+                        }}
+                      >
+                        {(['light', 'dark', 'system'] as const).map((value) => (
+                          <ToggleGroupItem key={value} value={value}>
+                            {t(`settings.${value}`)}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                    </Field>
+                    <EditorSettings />
+                    <MotionSettings value={query.data.appearanceMotion} />
+                    <HomeSettings value={query.data.homeIntro} />
+                  </section>
+                  <section>
+                    <h2>{t('settings.tags')}</h2>
+                    {tags.error ? (
+                      <Failure
+                        error={tags.error}
+                        retry={() => void tags.refetch()}
+                      />
+                    ) : tags.data?.length ? (
+                      tags.data.map((tag) => (
+                        <TagRow key={`${tag.id}-${tag.name}`} tag={tag} />
+                      ))
+                    ) : (
+                      <p className="muted">{t('settings.noTags')}</p>
+                    )}
+                  </section>
+                  <section>
+                    <h2>{t('settings.about')}</h2>
+                    <p className="muted">{t('settings.localHint')}</p>
+                    <dl className="about">
+                      <dt>{t('settings.version')}</dt>
+                      <dd>{info.data?.version}</dd>
+                      <dt>{t('settings.path')}</dt>
+                      <dd>{info.data?.dataDir}</dd>
+                    </dl>
+                  </section>
+                </>
+              )}
             </>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

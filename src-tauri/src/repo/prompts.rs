@@ -19,6 +19,7 @@ fn map(row: &rusqlite::Row<'_>) -> rusqlite::Result<Prompt> {
         use_count: row.get("use_count")?,
         is_system_template: row.get("is_system_template")?,
         template_key: row.get("template_key")?,
+        has_new_default: None,
         is_starred: row.get("is_starred")?,
         origin: super::common::origin(row)?,
         created_at: row.get("created_at")?,
